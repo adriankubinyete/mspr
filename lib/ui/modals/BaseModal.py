@@ -120,6 +120,19 @@ class BaseModal:
         else:
             self.root.focus_set()  # Se não for modal, volta o foco pro principal
     
+    def close(self):
+        """ Cancels overlays and timers, and close the window (without saving). """
+        self._click_assign_remove_all_highlights()
+        self.modal.destroy()
+        self.modal = None
+
+        # Verifica se há outro modal ativo para restaurar o foco
+        if isinstance(self.root, tk.Toplevel):
+            self.root.grab_set()  # Mantém o foco no modal pai
+            self.root.focus_set()
+        else:
+            self.root.focus_set()  # Se não for modal, volta o foco pro principal
+    
     # === INPUT BUILDER CORE ===
     
     def _add_tooltip(self, widget, text):

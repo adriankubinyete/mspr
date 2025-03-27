@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from lib.config import Config
-from lib.widgets.Tooltip import UIToolTip
+from lib.ui.widget.Tooltip import UIToolTip
 
 class UIBoxAssign(ttk.LabelFrame):
     def __init__(self, parent, section, key, label, info=None, padx=0, pady=0):

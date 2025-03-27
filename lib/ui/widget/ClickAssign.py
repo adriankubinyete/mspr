@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from lib.config import Config
-from lib.widgets.Tooltip import UIToolTip
+from lib.ui.widget.Tooltip import UIToolTip
 from pynput import mouse
 
 class UIClickAssign(ttk.LabelFrame):
@@ -10,7 +10,7 @@ class UIClickAssign(ttk.LabelFrame):
     HIGHLIGHT_SQUARE_SIZE = 10
     HIGHLIGHT_SQUARE_THICKNESS = 2
 
-    def __init__(self, parent, section, key, label, info=None, padx=0, pady=0):
+    def __init__(self, parent, section, key, label, info=None, padx=0, pady=0, autosave=False):
         """
         Cria um campo para selecionar uma posição clicando na tela.
 
@@ -21,11 +21,13 @@ class UIClickAssign(ttk.LabelFrame):
         :param info: Texto informativo opcional.
         :param padx: Padding horizontal.
         :param pady: Padding vertical.
+        :param autosave: Define se o valor será salvo automaticamente ao mudar.
         """
         super().__init__(parent, text=label)
         self.section = section
         self.key = key
         self.root = parent.winfo_toplevel()  # Obtém a janela principal
+        self.autosave = autosave
 
         self.pack(fill="x", pady=pady, padx=padx, anchor="w")
 
@@ -35,12 +37,12 @@ class UIClickAssign(ttk.LabelFrame):
 
         # Label X e Spinbox X
         ttk.Label(row_frame, text="X:").pack(side="left")
-        self.spin_x = ttk.Spinbox(row_frame, from_=0, to=9999, width=5)
+        self.spin_x = ttk.Spinbox(row_frame, from_=0, to=9999, width=5, command=self._on_spin_change)
         self.spin_x.pack(side="left", padx=5)
 
         # Label Y e Spinbox Y
         ttk.Label(row_frame, text="Y:").pack(side="left")
-        self.spin_y = ttk.Spinbox(row_frame, from_=0, to=9999, width=5)
+        self.spin_y = ttk.Spinbox(row_frame, from_=0, to=9999, width=5, command=self._on_spin_change)
         self.spin_y.pack(side="left", padx=5)
 
         # Botão de Info (se fornecido)
@@ -83,17 +85,14 @@ class UIClickAssign(ttk.LabelFrame):
             del self.active_timers[self.key]
 
     def _show_position_highlight(self, duration=5000):
-        """ Exibe um quadrado vermelho na posição salva por DURATION ms. """
-        coords = Config.get(self.section, self.key, "0,0")
-        if not coords or coords == "<Unset>":
-            return
-        
-        self._remove_highlight()  # Remove overlay antigo se houver
-
+        """ Exibe um quadrado vermelho na posição atual por DURATION ms. """
         try:
-            x, y = map(int, coords.split(","))
+            x = int(self.spin_x.get())
+            y = int(self.spin_y.get())
         except ValueError:
-            return
+            return  # Sai silenciosamente se os valores forem inválidos
+
+        self._remove_highlight()  # Remove overlay antigo se houver
 
         size = self.HIGHLIGHT_SQUARE_SIZE
         border = self.HIGHLIGHT_SQUARE_THICKNESS
@@ -122,6 +121,7 @@ class UIClickAssign(ttk.LabelFrame):
         self.active_overlays[self.key] = overlay
         self.active_timers[self.key] = self.root.after(duration, self._remove_highlight)
 
+
     def _capture_position(self):
         """ Captura a posição do mouse ao clicar e salva. """
         self._remove_highlight()
@@ -131,10 +131,24 @@ class UIClickAssign(ttk.LabelFrame):
             if pressed:
                 self.spin_x.set(x)
                 self.spin_y.set(y)
-                Config.set(self.section, self.key, f"{x},{y}")
-                Config.save()
+                
+                if self.autosave:
+                    self.save()
+
                 listener.stop()
                 self.btn_assign.config(text="Assign", state="normal")
 
         listener = mouse.Listener(on_click=on_click)
         listener.start()
+
+    def _on_spin_change(self):
+        """ Callback para quando os valores dos spinboxes mudam. """
+        if self.autosave:
+            self.save()
+
+    def save(self):
+        """ Salva manualmente os valores no Config. """
+        x = self.spin_x.get()
+        y = self.spin_y.get()
+        Config.set(self.section, self.key, f"{x},{y}")
+        Config.save()

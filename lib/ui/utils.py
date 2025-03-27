@@ -1,3 +1,4 @@
+import tkinter as tk
 from tkinter import ttk
 
 def style_break_tab_focus(root):

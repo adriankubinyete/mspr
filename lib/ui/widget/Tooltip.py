@@ -24,8 +24,8 @@ class UIToolTip:
             relief="solid", 
             borderwidth=1, 
             font=("Arial", 9), 
-            anchor="center", 
-            justify="center"
+            # anchor="center", 
+            # justify="center"
         )
         label.pack(ipadx=5, ipady=2)
 

@@ -1,0 +1,31 @@
+<div
+  style="display: flex; justify-content: space-around; align-items: stretch; text-align: center; margin-bottom: 20px; gap: 20px; flex-wrap: wrap; height: 100%;">
+
+  <!-- Chamadas Atendidas -->
+  <div
+    style="flex: 1; min-width: 200px; padding: 20px; border-radius: 8px; background-color: #27ae60; color: #fff; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); display: flex; flex-direction: column; justify-content: center;">
+    <p style="font-family: Arial, sans-serif; font-size: 18px; font-weight: bold; margin: 0;">
+      Chamadas Atendidas
+    </p>
+    <p style="font-family: Arial, sans-serif; font-size: 32px; margin: 10px 0 0 0;">
+      {{ @root.chamadas_atendidas }}
+    </p>
+    <p style="font-family: Arial, sans-serif; font-size: 18px; opacity: 0.8;">
+      {{ @root.pct_atendidas }}%
+    </p>
+  </div>
+
+  <!-- Chamadas Abandonadas -->
+  <div
+    style="flex: 1; min-width: 200px; padding: 20px; border-radius: 8px; background-color: #e74c3c; color: #fff; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); display: flex; flex-direction: column; justify-content: center;">
+    <p style="font-family: Arial, sans-serif; font-size: 18px; font-weight: bold; margin: 0;">
+      Chamadas Abandonadas
+    </p>
+    <p style="font-family: Arial, sans-serif; font-size: 32px; margin: 10px 0 0 0;">
+      {{ @root.chamadas_abandonadas }}
+    </p>
+    <p style="font-family: Arial, sans-serif; font-size: 18px; opacity: 0.8;">
+      {{ @root.pct_abandonadas }}%
+    </p>
+  </div>
+</div>

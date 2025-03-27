@@ -1,12 +1,28 @@
 import tkinter as tk
 from tkinter import ttk
 from lib.config import Config  # Importando o singleton diretamente
+from lib.ui.widget.Tooltip import UIToolTip
 
 class UIToggleableEntry(ttk.Frame):
-    def __init__(self, parent, section, key, label, info=None, padx=0, pady=0, width=35, fallback=""):
+    def __init__(self, parent, section, key, label, info=None, padx=0, pady=0, width=35, fallback="", autosave=True):
+        """
+        Cria um campo de entrada com um checkbox para ativá-lo/desativá-lo.
+
+        :param parent: Widget pai.
+        :param section: Seção no config.ini.
+        :param key: Chave no config.ini.
+        :param label: Texto do campo.
+        :param info: Texto informativo opcional.
+        :param padx: Padding horizontal.
+        :param pady: Padding vertical.
+        :param width: Largura do campo de entrada.
+        :param fallback: Valor padrão caso não exista no config.
+        :param autosave: Define se o valor será salvo automaticamente ao mudar.
+        """
         super().__init__(parent)
         self.section = section
         self.key = key
+        self.autosave = autosave
 
         self.pack(fill="x", pady=pady, padx=padx, anchor="w")
 
@@ -19,23 +35,21 @@ class UIToggleableEntry(ttk.Frame):
 
         # Variável da checkbox (ativa/desativa o input)
         self.toggle_var = tk.BooleanVar(value=initial_enabled)
-        self.toggle_var.trace_add("write", self.on_toggle_change)
 
         # Checkbox para ativar/desativar o campo
-        self.toggle_button = ttk.Checkbutton(row_frame, variable=self.toggle_var, takefocus=False)
+        self.toggle_button = ttk.Checkbutton(row_frame, variable=self.toggle_var, takefocus=False, command=self.toggle_entry)
         self.toggle_button.pack(side="left", padx=(0, 5))
 
         # Botão de Info (se fornecido)
         if info:
             info_button = ttk.Label(row_frame, text="ℹ", foreground="blue", cursor="hand2")
-            info_button.pack(side="right", padx=(0, 5))
-            # Adicionar tooltip aqui, se tiver um método para isso
+            info_button.pack(side="right", padx=5)
+            UIToolTip(info_button, info)
 
         ttk.Label(row_frame, text=label).pack(side="left", padx=(0, 5))
 
         # Campo de entrada (input)
         self.entry_var = tk.StringVar(value=initial_value)
-        self.entry_var.trace_add("write", self.on_entry_change)
 
         self.entry = ttk.Entry(row_frame, width=width, textvariable=self.entry_var)
         self.entry.pack(side="right", padx=(0, 5))
@@ -50,14 +64,9 @@ class UIToggleableEntry(ttk.Frame):
         state = "normal" if self.toggle_var.get() else "disabled"
         self.entry.config(state=state)
 
-    def on_toggle_change(self, *args):
-        """Salva automaticamente quando a checkbox muda."""
-        self.toggle_entry()
+    def save(self):
+        """Salva manualmente o estado da checkbox e o valor do campo no Config."""
         Config.set(self.section, f"{self.key}_enabled", str(int(self.toggle_var.get())))
-        Config.save()
-
-    def on_entry_change(self, *args):
-        """Salva automaticamente quando o usuário digita no campo."""
         Config.set(self.section, self.key, self.entry_var.get())
         Config.save()
 

@@ -1,10 +1,10 @@
 import tkinter as tk
 from tkinter import ttk
 from lib.config import Config  # Importando o singleton diretamente
-from lib.widgets.Tooltip import UIToolTip
+from lib.ui.widget.Tooltip import UIToolTip
 
 class UIRadio(ttk.Frame):
-    def __init__(self, parent, section, key, label, options, info=None, padx=0, pady=0, max_columns=3):
+    def __init__(self, parent, section, key, label, options, info=None, padx=0, pady=0, max_columns=3, autosave=True):
         """
         Cria um grupo de botões de rádio, ajustando para múltiplas linhas conforme necessário.
 
@@ -17,10 +17,12 @@ class UIRadio(ttk.Frame):
         :param padx: Padding horizontal.
         :param pady: Padding vertical.
         :param max_columns: Número máximo de colunas antes de quebrar para a próxima linha.
+        :param autosave: Define se o valor será salvo automaticamente ao mudar a seleção.
         """
         super().__init__(parent)
         self.section = section
         self.key = key
+        self.autosave = autosave
 
         self.pack(fill="x", pady=pady, padx=padx, anchor="w")
 
@@ -28,7 +30,10 @@ class UIRadio(ttk.Frame):
         initial_value = Config.get(self.section, key, options[0][0])
 
         self.radio_var = tk.StringVar(value=initial_value)
-        self.radio_var.trace_add("write", self.on_radio_change)
+
+        # Adiciona um trace para salvar automaticamente apenas se autosave=True
+        if self.autosave:
+            self.radio_var.trace_add("write", self.on_radio_change)
 
         # Frame principal com borda
         frame = ttk.LabelFrame(self, text=label)
@@ -56,7 +61,12 @@ class UIRadio(ttk.Frame):
             UIToolTip(info_button, info)
 
     def on_radio_change(self, *args):
-        """Salva automaticamente quando o usuário muda a seleção."""
+        """Salva automaticamente quando o usuário muda a seleção (se autosave=True)."""
+        if self.autosave:
+            self.save()
+
+    def save(self):
+        """Salva o valor manualmente no Config."""
         Config.set(self.section, self.key, self.radio_var.get())
         Config.save()
 
@@ -65,5 +75,7 @@ class UIRadio(ttk.Frame):
         return self.radio_var.get()
 
     def set_value(self, value):
-        """Define o valor do botão de rádio e salva automaticamente."""
+        """Define o valor do botão de rádio e salva automaticamente no Config (se autosave=True)."""
         self.radio_var.set(value)
+        if self.autosave:
+            self.save()
