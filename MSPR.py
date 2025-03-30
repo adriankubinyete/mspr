@@ -6,9 +6,6 @@ from collections import defaultdict
 # interface
 import lib.ui.widgets as ui
 from lib.ui.utils import *
-# from lib.ui.modals.ScreenCallibration import ModalScreenCallibration
-# from lib.ui.modals.Biome import ModalBiomeManager
-
 
 class Application:
     def __init__(
@@ -125,7 +122,8 @@ class Application:
     def page_multi_account(self, page):
         l = self.__getLogger("page:multi_account")
         l.info("Called")
-        # check if ram ws is running.
-        # if not, make a simple page saying "enable your ram ws and click here to connect"
-
-        # add/remove accounts from ram
+        l.trace(f"Instantiating MultiAccountPage")
+        multi_account_page = ui.MultiAccountPage(page, self)
+        multi_account_page.pack(fill="both", expand=True)
+        l.trace(f"Starting RAMWS connection check")
+        multi_account_page.start_connection()

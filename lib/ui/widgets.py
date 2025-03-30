@@ -14,6 +14,9 @@ from lib.ui.modals.ScreenCallibration import ModalScreenCallibration
 from lib.ui.modals.Biome import ModalBiomeManager
 from lib.ui.modals.RAMWS import ModalRAMWSSettings
 
+# other items (standalone frames)
+from lib.ui.MultiAccountPage import MultiAccountPage
+
 """
 This file is basically an easy way to import all widgets.
 You can also control which version of widgets is imported from here, through changing the import path.
