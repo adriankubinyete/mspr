@@ -44,7 +44,7 @@ class Application:
         self._create_notebook_pages()
 
     def __getLogger(self, name):
-        return logging.getLogger(f"mspr.App.{name}")
+        return logging.getLogger(f"mpsr.App.{name}")
 
     def _create_notebook(self):
         """

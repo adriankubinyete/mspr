@@ -92,7 +92,7 @@ class ModalBiomeConfig(BaseModal):
             section=self.section_name,
             key="custom_ping",
             label="Custom Ping",
-            info='If Send Ping is enabled, ID will we ping?\nUse "@<id>" to ping a user, and "&<id>" to ping a role.\nYou can specificy multiple users/roles by separating them with a comma, no spaces.\nExample: @123456789012345678,&123456789012345678',
+            info='If Send Ping is enabled, what ID will we ping?\nUse "@<id>" to ping a user, and "&<id>" to ping a role.\nYou can specificy multiple users/roles by separating them with a comma, no spaces.\nExample: @123456789012345678,&123456789012345678',
             autosave=False,
         )
 
@@ -101,7 +101,7 @@ class ModalBiomeConfig(BaseModal):
             section=self.section_name,
             key="custom_webhook_url",
             label="Custom Webhook",
-            info="If you want to specify a custom webhook for [{self.biome}] biome, enter it here.\nYou can specify multiple webhooks by separating them with a comma, no spaces",
+            info=f"If you want to specify a custom webhook for [{self.biome}] biome, enter it here.\nYou can specify multiple webhooks by separating them with a comma, no spaces",
             autosave=False,
         )
 

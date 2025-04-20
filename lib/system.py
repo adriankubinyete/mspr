@@ -3,7 +3,7 @@ import subprocess
 
 class System():
     def __init__(self):
-        self.log_name = 'mspr.System.'
+        self.log_name = 'mpsr.System.'
 
     def __getLogger(self, name):
         return logging.getLogger(self.log_name + name)

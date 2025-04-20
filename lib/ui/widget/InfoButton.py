@@ -19,5 +19,5 @@ class UIInfoButton(ttk.Label):
             UIToolTip(self, info)
         
         # Usando grid em vez de pack para manter consistência com o layout
-        self.grid(padx=padx, pady=pady)
+        # self.grid(padx=padx, pady=pady)
 

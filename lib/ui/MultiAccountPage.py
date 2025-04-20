@@ -22,7 +22,7 @@ class MultiAccountPage(ttk.Frame):
         self._create_widgets()
 
     def __getLogger(self, name):
-        return logging.getLogger(f"mspr.App.MultiAccountPage.{name}")
+        return logging.getLogger(f"mpsr.page:MultiAccount.{name}")
 
     def _create_widgets(self):
         """Cria os widgets principais, mas não os frames de sucesso/erro."""
@@ -37,6 +37,7 @@ class MultiAccountPage(ttk.Frame):
         # Inicializa com a tela de erro
         self.switch_to_error()
 
+    # failed to connect to ramws
     def create_error_frame(self):
         """Cria o frame de erro."""
         self.frame_error = ttk.Frame(self.frame)
@@ -70,32 +71,50 @@ class MultiAccountPage(ttk.Frame):
         )
         btn_settings.pack(side="right", padx=10, fill="x")
 
+    # connected to ramws
     def create_success_frame(self):
-        """Cria o frame de sucesso com Treeview e botão de ativar/desativar conta."""
-        self.frame_success = ttk.Frame(self.frame)
+        """Creates the success frame with a search bar, Treeview, and launch button."""
 
-        # Barra de pesquisa e botão de refresh
-        search_frame = ttk.Frame(self.frame_success)
-        search_frame.pack(fill="x", padx=10, pady=5)
+        # Main container frame
+        self.frame_success = tk.Frame(self.frame)
+        self.frame_success.pack(fill="both", expand=True)
 
-        ttk.Label(search_frame, text="Search:").pack(side="left", padx=(0, 5))
+        # --- Search Frame (top)
+        search_frame = tk.Frame(self.frame_success)
+        search_frame.pack(fill="x", pady=(5, 5))
+
+        # > "Search" label
+        ttk.Label(search_frame, text="Search:").pack(side="left", padx=(0, 5), pady=5)
+
+        # > Search entry field
         self.search_var = tk.StringVar()
         search_entry = ttk.Entry(search_frame, textvariable=self.search_var)
-        search_entry.pack(side="left", fill="x", expand=True)
+        search_entry.pack(side="left", fill="x", expand=True, pady=5)
         search_entry.bind("<KeyRelease>", self.filter_tree)
 
-        # Botão para re-fetch
+        # > Fetch Accounts button
         refresh_button = ttk.Button(
             search_frame,
             text="Fetch Accounts",
             command=self.fetch_accounts,
             takefocus=False,
         )
-        refresh_button.pack(side="right", padx=10)
+        refresh_button_info = ui.InfoButton(
+            search_frame,
+            info="The \"Fetch Accounts\" will fetch accounts from the Roblox Account Manager and display them in the table below.\n\nClick this button if you have added or removed accounts from the Roblox Account Manager.\n\nIf you have not added or removed accounts, you can ignore this button.",
+        )
+        
+        refresh_button_info.pack(side="right", padx=(5, 0), pady=5)
+        refresh_button.pack(side="right", padx=(10, 0), pady=5)
+        
 
-        # Definição das colunas do Treeview
-        columns = ("Account", "Private Server URL", "Alternate Webhook URL")
+        # --- Treeview Frame (middle, expandable)
+        treeview_frame = tk.Frame(self.frame_success)
+        treeview_frame.pack(fill="both", expand=True, pady=5)
+        
+        treeview_frame.pack_propagate(False)
 
+        # > Treeview style configuration
         style = ttk.Style()
         style.configure(
             "Custom.Treeview",
@@ -103,69 +122,79 @@ class MultiAccountPage(ttk.Frame):
             fieldbackground="white",
             borderwidth=0,
         )
+        # style.map(
+        #     "Custom.Treeview",
+        #     background=[("selected", "#c7d7ff")],
+        # )
 
-        # Aqui você define apenas o fundo de seleção, mantendo o foreground original.
-        style.map(
-            "Custom.Treeview",
-            background=[("selected", "#c7d7ff")],  # Cor suave para o item selecionado
-        )
-
-        self.tree_success = ttk.Treeview(
-            self.frame_success,
+        # > Define treeview columns
+        columns = ("Account", "Private Server URL", "Alternate Webhook URL")
+        self.accounts_treeview = ttk.Treeview(
+            treeview_frame,
             columns=columns,
             show="headings",
             style="Custom.Treeview",
         )
-        
-        self.tree_success.tag_configure("disabled", foreground="gray", background="#f0f0f0")
+        self.accounts_treeview.tag_configure("disabled", foreground="#441520", background="#eebbc1")
+        self.accounts_treeview.tag_configure("selected", foreground="#3691ff")
 
         for col in columns:
-            self.tree_success.heading(col, text=col)
-            self.tree_success.column(col, anchor="center", stretch=tk.YES)  # Deixe a coluna "stretchable"
+            self.accounts_treeview.heading(col, text=col)
+            self.accounts_treeview.column(col, anchor="center", stretch=tk.YES)
 
-        # Scrollbar para o Treeview
+        # > Vertical scrollbar for Treeview
         tree_scroll = ttk.Scrollbar(
-            self.frame_success, orient="vertical", command=self.tree_success.yview
+            treeview_frame, orient="vertical", command=self.accounts_treeview.yview
         )
-        self.tree_success.configure(yscrollcommand=tree_scroll.set)
-        tree_scroll.pack(side="right", fill="y")
+        self.accounts_treeview.configure(yscrollcommand=tree_scroll.set)
 
-        # Dicionário para armazenar status das contas (Enabled/Disabled)
+        # Place Treeview and Scrollbar
+        tree_scroll.pack(side="right", fill="y")
+        self.accounts_treeview.pack(side="left", fill="both", expand=True)
+
+        # > Track account states and item references
         self.account_status = {}
-        
-        # Lista para armazenar as referências dos itens no Treeview
         self.tree_items = {}
 
-        # Chama a função fetch_accounts para popular os dados no Treeview
-        self.fetch_accounts()  # Aqui você pode descomentar essa linha quando quiser buscar as contas reais.
-
-        # Bind para duplo clique na coluna "Account" para ativar/desativar a conta
-        self.tree_success.bind(
+        # > Treeview interaction bindings
+        # 1 lclick: select
+        # ~ should work through tagging for style. only changes foreground
+        
+        # 2 lclick on field: edit field
+        # 2 lclick on account column: toggle account (enabled/disabled)
+        # ~ should work through tagging for style. changes both foreground and background. overriden by select
+        
+        # 1 rclick: [NOT IMPLEMENTED] context menu 
+        self.accounts_treeview.bind(
             "<Button-1>",
-            lambda event: self.tree_success.selection_remove(
-                self.tree_success.selection()
+            lambda event: self.accounts_treeview.selection_remove(
+                self.accounts_treeview.selection()
             ),
         )
-        self.tree_success.bind("<Double-1>", self.on_double_click)
+        self.accounts_treeview.bind("<Double-1>", self.on_double_click)
 
-        # Empacotar o Treeview
-        self.tree_success.pack(pady=10, fill="both", expand=True)
-        self.frame_success.pack(fill="both", expand=True)
-        
-        # Criar o botão "Launch Accounts"
+        # > Populate treeview
+        self.fetch_accounts()
+
+        # --- Footer Frame (bottom, always visible)
+        footer_frame = tk.Frame(self.frame_success)
+        footer_frame.pack(fill="x", pady=(5, 10))
+
+        # > Launch Accounts button
         launch_button = ttk.Button(
-            self.frame_success,
+            footer_frame,
             text="Launch Accounts",
             command=self.launch_all_accounts,
             takefocus=False,
         )
-        launch_button.pack(pady=10)
+        launch_button.pack()
 
-        # Ajuste de largura das colunas após o carregamento inicial
-        total_width = self.tree_success.winfo_width()
-        self.tree_success.column("Account", width=int(total_width * 0.25))  # 25% da largura da janela
-        self.tree_success.column("Private Server URL", width=int(total_width * 0.35))  # 35% da largura da janela
-        self.tree_success.column("Alternate Webhook URL", width=int(total_width * 0.4))  # 40% da largura da janela
+        # > Adjust column widths after initial layout
+        self.frame_success.update_idletasks()
+        total_width = self.accounts_treeview.winfo_width()
+        self.accounts_treeview.column("Account", width=int(total_width * 0.25))
+        self.accounts_treeview.column("Private Server URL", width=int(total_width * 0.35))
+        self.accounts_treeview.column("Alternate Webhook URL", width=int(total_width * 0.4))
 
 
     def filter_tree(self, event=None):
@@ -173,20 +202,20 @@ class MultiAccountPage(ttk.Frame):
         search_text = self.search_var.get().lower()
 
         # Limpa o Treeview
-        for item in self.tree_success.get_children():
-            self.tree_success.delete(item)
+        for item in self.accounts_treeview.get_children():
+            self.accounts_treeview.delete(item)
 
         # Se o filtro estiver vazio, reinserir todos os dados
         if not search_text:
             for data in self.all_data:
                 account, server_url, webhook_url, enabled = data
-                item_id = self.tree_success.insert(
+                item_id = self.accounts_treeview.insert(
                     "", "end", values=(account, server_url, webhook_url)
                 )
                 self.tree_items[item_id] = (account, server_url, webhook_url)
                 self.account_status[item_id] = enabled
                 if not enabled:
-                    self.tree_success.item(item_id, tags=("disabled",))
+                    self.accounts_treeview.item(item_id, tags=("disabled",))
             return
 
         # Se houver filtro, insere somente os itens que correspondem a qualquer campo
@@ -198,112 +227,118 @@ class MultiAccountPage(ttk.Frame):
                 or search_text in server_url.lower()
                 or search_text in webhook_url.lower()
             ):
-                item_id = self.tree_success.insert(
+                item_id = self.accounts_treeview.insert(
                     "", "end", values=(account, server_url, webhook_url)
                 )
                 self.tree_items[item_id] = (account, server_url, webhook_url)
                 self.account_status[item_id] = enabled
                 if not enabled:
-                    self.tree_success.item(item_id, tags=("disabled",))
-
-
-
-
+                    self.accounts_treeview.item(item_id, tags=("disabled",))
 
     def on_double_click(self, event):
         """Permite edição das células (exceto Account) ao dar um duplo clique e alterna o status na coluna Account."""
-        item_id = self.tree_success.identify_row(event.y)
+        item_id = self.accounts_treeview.identify_row(event.y)
         if not item_id:
             return
 
-        column_id = self.tree_success.identify_column(event.x)
+        column_id = self.accounts_treeview.identify_column(event.x)
         column_index = int(column_id[1:]) - 1  # Colunas começam em 1 no Treeview
 
         # Se for a coluna "Account", alterna o status (habilitar/desabilitar)
         if column_index == 0:  # A "Account" é a coluna de índice 0
             self.toggle_account(item_id)
+            self.accounts_treeview.selection_remove(
+                self.accounts_treeview.selection()
+            ),
         else:
             # Se for qualquer outra coluna, permite a edição
             self.on_edit(event)
 
     def toggle_account(self, item_id):
-        """Ativa ou desativa uma conta e altera a aparência visual."""
+        """Ativa ou desativa uma conta, atualiza aparência visual e `self.all_data`."""
         enable = not self.account_status.get(item_id, True)  # Alterna o estado
         self.account_status[item_id] = enable
 
-        values = self.tree_success.item(item_id, "values")
-
-        # Salva a mudança no arquivo de configuração
-        account = values[0]
+        values = list(self.accounts_treeview.item(item_id, "values"))
+        account = values[0]  # "Account" é sempre o primeiro valor na linha
         section = f"{self.RWS_ACCOUNTS_SECTION_PREFIX}{account}"
 
-        # Atualiza a configuração para a conta (salva o status de 'enabled')
+        # Atualiza `self.all_data`
+        for i, data in enumerate(self.all_data):
+            if data[:3] == tuple(values[:3]):  # Match pelos 3 primeiros campos
+                self.all_data[i] = (data[0], data[1], data[2], enable)
+                break
+
+        # Atualiza a configuração para a conta
         Config.set(section=section, key="enabled", value=str(enable))
         Config.save()
 
         # Atualiza o status visual no Treeview
         if enable:
-            self.tree_success.item(
-                item_id, values=values, tags=()
-            )  # Remove efeito escuro
+            self.accounts_treeview.item(item_id, values=values, tags=())  # Remove efeito escuro
         else:
-            self.tree_success.item(item_id, values=values, tags=("disabled",))
+            self.accounts_treeview.item(item_id, values=values, tags=("disabled",))
 
     def on_edit(self, event):
-        """Permite edição das células (exceto Account) ao dar um duplo clique."""
-        selected_item = self.tree_success.selection()
+        """Permite edição das células (exceto Account) ao dar um duplo clique e atualiza `self.all_data` corretamente."""
+        selected_item = self.accounts_treeview.selection()
         if not selected_item:
             return
 
-        column_id = self.tree_success.identify_column(event.x)
+        column_id = self.accounts_treeview.identify_column(event.x)
         column_index = int(column_id[1:]) - 1  # Colunas começam em 1 no Treeview
 
         # Se for a coluna "Account", impedir edição
-        if column_index == 0:  # A "Account" é a coluna de índice 0
+        if column_index == 0:
             return
 
         # Obter valores atuais da linha selecionada
         item = selected_item[0]
-        values = list(self.tree_success.item(item, "values"))
+        values = list(self.accounts_treeview.item(item, "values"))
 
         # Criar um Entry para edição
-        entry = ttk.Entry(self.tree_success)
+        entry = ttk.Entry(self.accounts_treeview)
         entry.insert(0, values[column_index])
         entry.select_range(0, "end")
         entry.focus()
 
         # Posicionar o Entry sobre a célula clicada
-        x, y, width, height = self.tree_success.bbox(item, column_index)
+        x, y, width, height = self.accounts_treeview.bbox(item, column_index)
         entry.place(x=x, y=y, width=width, height=height)
 
         def save_edit(event):
-            """Salva a edição, atualiza o Treeview e as configurações no Config."""
+            """Salva a edição e atualiza Treeview, self.all_data e Config."""
+            new_value = entry.get().strip()
+            entry.destroy()
+
+            if new_value == values[column_index]:
+                return  # Nenhuma mudança foi feita
+
             # Atualiza o valor na linha do Treeview
-            values[column_index] = entry.get()
-            self.tree_success.item(item, values=values)
-            self.tree_items[item] = tuple(values[:3])  # Atualiza os dados armazenados
+            values[column_index] = new_value
+            self.accounts_treeview.item(item, values=values)
+
+            # Atualiza `self.all_data`
+            for i, data in enumerate(self.all_data):
+                if data[:3] == tuple(values[:3]):  # Match pelos 3 primeiros campos
+                    updated_data = list(data)
+                    updated_data[column_index] = new_value
+                    self.all_data[i] = tuple(updated_data)
+                    break
 
             # Salvar a edição no Config
             account = values[0]  # "Account" é sempre o primeiro valor na linha
             account_section = f"{self.RWS_ACCOUNTS_SECTION_PREFIX}{account}"
 
-            # Salva o novo valor na configuração
             if column_index == 1:  # Coluna 1: Server URL
-                Config.set(section=account_section, key="server_url", value=entry.get())
+                Config.set(section=account_section, key="server_url", value=new_value)
             elif column_index == 2:  # Coluna 2: Webhook URL
-                Config.set(
-                    section=account_section, key="webhook_url", value=entry.get()
-                )
+                Config.set(section=account_section, key="webhook_url", value=new_value)
 
-            # Salvar o estado da conta (habilitado ou desabilitado)
+            # Salvar o estado da conta no Config
             enabled = self.account_status.get(item, True)
-            Config.set(section=account_section, key="enabled", value=enabled)
-
-            # Confirma que a configuração foi salva
-            Config.save()  # Se a sua Config tem um método de salvar, chame aqui
-
-            # Destroi o entry após salvar
-            entry.destroy()
+            Config.set(section=account_section, key="enabled", value=str(enabled))
+            Config.save()
 
         entry.bind("<Return>", save_edit)
         entry.bind("<FocusOut>", lambda e: entry.destroy())
@@ -344,7 +379,7 @@ class MultiAccountPage(ttk.Frame):
         )
 
         # Inicia o keepalive
-        RAMWS.start_keepalive(self.on_connection_checked)
+        RAMWS.start_connection_checker(self.on_connection_checked)
 
     def fetch_accounts(self):
         """Busca as contas novamente do RAMWS e atualiza o Treeview."""
@@ -356,15 +391,17 @@ class MultiAccountPage(ttk.Frame):
             self.all_data = []  # Limpa os dados anteriores
             
             # Limpa os itens existentes no Treeview
-            for item in self.tree_success.get_children():
-                self.tree_success.delete(item)
+            for item in self.accounts_treeview.get_children():
+                self.accounts_treeview.delete(item)
 
             # Para cada conta, buscamos detalhes como o server_url e webhook_url
             for account in accounts:
                 # Buscando configurações no Config para cada conta
                 account_section = f"{self.RWS_ACCOUNTS_SECTION_PREFIX}{account}"
+                l.trace(f"Fetching config for account: {account}")
                 account_status = Config.get(section=account_section, key="enabled", fallback=True)  # Assume que está habilitado se não encontrado
-                account_status = account_status.lower() == "true"
+                l.trace(f"Account status: {account_status}")
+                account_status = str(account_status).lower() == "true"
                 server_url = Config.get(
                     section=account_section, key="server_url", fallback=""
                 )  # Nenhum valor encontrado, será None
@@ -375,7 +412,7 @@ class MultiAccountPage(ttk.Frame):
                 self.all_data.append((account, server_url, webhook_url, account_status))
                 
                 # Inserir a conta no Treeview
-                item_id = self.tree_success.insert(
+                item_id = self.accounts_treeview.insert(
                     "", "end", values=(account, server_url, webhook_url)
                 )
                 self.tree_items[item_id] = (account, server_url, webhook_url)
@@ -389,7 +426,7 @@ class MultiAccountPage(ttk.Frame):
                 # Atualiza a aparência dependendo do status da conta (habilitada/desabilitada)
                 if not account_status:
                     l.info(f"Account: {account} is disabled.")
-                    self.tree_success.item(item_id, values=self.tree_success.item(item_id, "values"), tags=("disabled",))
+                    self.accounts_treeview.item(item_id, values=self.accounts_treeview.item(item_id, "values"), tags=("disabled",))
 
                 self.all_items.append(
                     item_id
@@ -397,13 +434,13 @@ class MultiAccountPage(ttk.Frame):
 
         # Chama o método list_accounts do RAMWS
         RAMWS.list_accounts(update_treeview)
-        
+
     def launch_all_accounts(self):
         """Inicia todas as contas habilitadas."""
         l = self.__getLogger("launch_all_accounts")
         l.info("Launching all accounts...")
-        for item in self.tree_success.get_children():  # Pega todas as linhas do Treeview
-            account = self.tree_success.item(item, "values")[0]  # Pega a conta
+        for item in self.accounts_treeview.get_children():  # Pega todas as linhas do Treeview
+            account = self.accounts_treeview.item(item, "values")[0]  # Pega a conta
             is_enabled = Config.get(
                 section=f"{self.RWS_ACCOUNTS_SECTION_PREFIX}{account}",
                 key="enabled",

@@ -13,7 +13,7 @@ from .discord import Discord
 class RobloxApplication:
     def __init__(self):
         self.processes = []
-        self.log_name = "mspr.Roblox."
+        self.log_name = "mpsr.Roblox."
         self.LOGFILE_DETECTION_METHOD = 'accesstime' # accesstime | filename
         
     def __getLogger(self, name):

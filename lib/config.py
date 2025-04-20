@@ -17,7 +17,7 @@ class ConfigManager:
         self.config = configparser.ConfigParser()
         self.cached_config = None
         self.config_file = "config.ini"
-        self.logger = logging.getLogger("mspr.ConfigManager")
+        self.logger = logging.getLogger("mpsr.ConfigManager")
         
         # Create config file if it doesn't exist
         if not Path(self.config_file).exists():

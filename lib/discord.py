@@ -9,7 +9,7 @@ class Discord:
         pass
 
     def __getLogger(self, name):
-        return logging.getLogger(f'mspr.Discord.{name}')
+        return logging.getLogger(f'mpsr.Discord.{name}')
 
     def setWebhook(self, url):
         """Separa a string de URLs por vírgulas e armazena como lista."""

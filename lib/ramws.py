@@ -35,9 +35,9 @@ class RAMWS:
         return f"Password={self.password}" if self.password_enabled else ""
     
     def __getLogger(self, name):
-        return logging.getLogger("mspr.App.RAMWS." + name)
+        return logging.getLogger("mpsr.lib:RAMWS." + name)
     
-    def test_connection(self, timeout=5):
+    def test_connection(self, timeout=3):
         """Testa conexão com o RAM Webserver (bloqueante)"""
         url = f"{self.ramws_full_url}/GetAccounts?{self.ramws_password}"
         try:
@@ -54,16 +54,17 @@ class RAMWS:
         
         threading.Thread(target=run, daemon=True).start()
 
-    def start_keepalive(self, callback, interval=10):
+    def start_connection_checker(self, callback, interval=10):
         """Inicia um keepalive, verificando a conexão a cada 'interval' segundos"""
-        l = self.__getLogger("keepalive")
-        l.debug("Starting keepalive...")
+        l = self.__getLogger("ConnectionChecker")
+        l.debug("Starting...")
         def run():
             self.keepalive_running = True
             while self.keepalive_running:
                 status = self.test_connection()
                 
-                l.trace(f"Keepalive status: {status}")
+                l.trace("WebServer is %s", "online" if status else "offline")
+                
                 # Só chama o callback se o status mudar
                 if status != self.last_status:
                     self.last_status = status
@@ -73,10 +74,10 @@ class RAMWS:
 
         threading.Thread(target=run, daemon=True).start()
 
-    def stop_keepalive(self):
+    def stop_connection_checker(self):
         """Para o keepalive"""
-        l = self.__getLogger("keepalive")
-        l.debug("Stopping keepalive...")
+        l = self.__getLogger("ConnectionChecker")
+        l.debug("Stopping...")
         self.keepalive_running = False
         
     # --------------------------------------------

@@ -12,7 +12,7 @@ class BaseModal:
         self.section_name = section_name
         
         # === Menu customization parameters
-        self.LOG_NAME = f"mspr.App.Modal::{self.section_name}" # dont forget to name your log.
+        self.LOG_NAME = f"mpsr.Modal.{self.section_name}" # dont forget to name your log.
         self.WINDOW_TITLE =  title
         self.WINDOW_IS_RESIZABLE = resizeable
         self.WINDOW_WIDTH = width
