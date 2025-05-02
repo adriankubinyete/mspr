@@ -113,6 +113,40 @@ class RAMWS:
             l.error(f"Error while listing accounts: {str(e)}")
             callback([])  # Caso ocorra uma exceção, retorna uma lista vazia
             
+            
+    def get_csrf_token(self, account):
+        """Obtains the CSRF token for the given account."""
+        l = self.__getLogger("get_csrf_token")
+        # l.debug(f"Getting CSRF token for account: {account}")
+        
+        url = f"{self.ramws_full_url}/GetCSRFToken?{self.ramws_password}&Account={account}"
+        
+        return_data = {
+            "account": account,
+            "csrf_token": None,
+            "success": False,
+            "error": None
+        }
+        
+        try:
+            response = requests.get(url, timeout=10)
+            ws_error = response.headers.get("ws-error", "")
+            
+            if not ws_error:
+                # success
+                l.trace(f"{account}'s CSRF Token: {response.text[0]}{'*' * (len(response.text) - 2)}{response.text[-1]}")
+                return_data["success"] = True
+                return_data["csrf_token"] = response.text
+            else:
+                # failed
+                return_data["error"] = ws_error
+        except requests.RequestException as e:
+            l.error(f"{account} : Failed to get CSRF Token: {str(e)}")
+            return_data["error"] = str(e)
+
+        return return_data
+                
+        
     def launch_account(self, account, placeid, jobid, follow_user=False, join_vip=False, callback=None):
         """Inicia uma conta a partir do endpoint /LaunchAccount."""
         l = self.__getLogger("launch_account")
@@ -136,7 +170,7 @@ class RAMWS:
 
             # Verifica se há um erro no cabeçalho "ws-error"
             ws_error = response.headers.get("ws-error", "")
-
+            
             if not ws_error:
                 # Se "ws-error" estiver vazio, a operação foi bem-sucedida
                 l.info(f"Successfully launched account: {account}")
@@ -156,9 +190,5 @@ class RAMWS:
             callback(return_data)
 
         return return_data
-
-
-
-
 
 RAMWS = RAMWS()

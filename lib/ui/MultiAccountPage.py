@@ -1,6 +1,7 @@
 import tkinter as tk
 import lib.ui.widgets as ui
 import logging
+from collections import defaultdict
 from tkinter import ttk
 from lib.config import Config
 from lib.ramws import RAMWS
@@ -78,6 +79,12 @@ class MultiAccountPage(ttk.Frame):
         # Main container frame
         self.frame_success = tk.Frame(self.frame)
         self.frame_success.pack(fill="both", expand=True)
+
+        # --- Test Frame (first things, just testing. control panel)        
+        test_frame = tk.Frame(self.frame_success, background="blue", borderwidth=1)
+        test_frame.pack(fill="x", pady=5, padx=5)
+        
+        # > "keep-alive checkbox"
 
         # --- Search Frame (top)
         search_frame = tk.Frame(self.frame_success)
@@ -172,6 +179,12 @@ class MultiAccountPage(ttk.Frame):
             ),
         )
         self.accounts_treeview.bind("<Double-1>", self.on_double_click)
+        
+        # > Treeview Context menu
+        self.accounts_treeview.bind("<Button-3>", self.treeview_context_menu)
+        self.treeview_menu = tk.Menu(self.accounts_treeview, tearoff=0)
+        self.treeview_menu.add_command(label="Launch account", command=self.context_launch_account)
+        self.treeview_menu.add_command(label="Debuginfo", command=self.context_debug_info)
 
         # > Populate treeview
         self.fetch_accounts()
@@ -254,6 +267,22 @@ class MultiAccountPage(ttk.Frame):
             # Se for qualquer outra coluna, permite a edição
             self.on_edit(event)
 
+    def treeview_context_menu(self, event):
+        region = self.accounts_treeview.identify("region", event.x, event.y)
+        if region != "cell": return  # click was not on a cell
+
+        row_id = self.accounts_treeview.identify_row(event.y)
+        if not row_id: return  # clicked on empty space
+
+        self.accounts_treeview.selection_set(row_id) # set row as selection
+
+        # show menu
+        try:
+            self.treeview_menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            self.treeview_menu.grab_release()
+
+    
     def toggle_account(self, item_id):
         """Ativa ou desativa uma conta, atualiza aparência visual e `self.all_data`."""
         enable = not self.account_status.get(item_id, True)  # Alterna o estado
@@ -420,7 +449,7 @@ class MultiAccountPage(ttk.Frame):
                     account_status  # Define o status da conta conforme configurado
                 )
 
-                l.trace(
+                l.debug(
                     f"Account: {account}, Status: {account_status}, Typeof Status: {type(account_status)}"
                 )
                 # Atualiza a aparência dependendo do status da conta (habilitada/desabilitada)
@@ -434,6 +463,70 @@ class MultiAccountPage(ttk.Frame):
 
         # Chama o método list_accounts do RAMWS
         RAMWS.list_accounts(update_treeview)
+        
+    def context_launch_account(self):
+        selected = self.accounts_treeview.selection()
+        for item_id in selected:
+            account = self.accounts_treeview.item(item_id, "values")[0]
+            self.launch_single_account(account)
+
+    def context_debug_info(self):
+        l = self.__getLogger("context_debug_info")
+        selected = self.accounts_treeview.selection()
+        for item_id in selected:
+            account = self.accounts_treeview.item(item_id, "values")[0]
+            
+            l.debug(f"[DEBUG-CONTEXT] CSRF Token: {RAMWS.get_csrf_token(account)}")
+            
+
+    def get_account_config(self, account_name):
+        """Returns a dictionary containing the configuration for the given account.
+
+        Args:
+            account_name (string): The name of the account.
+
+        Returns:
+            dict: A dictionary containing the configuration for the given account.
+        """
+        l = self.__getLogger("get_account_config")
+        d = defaultdict(dict)
+        try:
+            account_section = f"{self.RWS_ACCOUNTS_SECTION_PREFIX}{account_name}"
+            if not Config.has_section(account_section):
+                l.error(f"Section {account_section} does not exist.")
+                return d
+            
+            d["account_name"] = account_name
+            d["is_enabled"] = str(Config.get(section=account_section, key="enabled", fallback=False).lower()) == "true"
+            d["server_url"] = Config.get(section=account_section, key="server_url", fallback="")
+            d["webhook_url"] = Config.get(section=account_section, key="webhook_url", fallback="")
+        except Exception as e:
+            l.error(f"Failed to get account config for {account_name}. Error: {e}")
+            
+        return d
+    
+    def launch_single_account(self, account_name):
+        l = self.__getLogger("launch_single_account")
+        try:
+            account_data = self.get_account_config(account_name)
+            if not account_data["is_enabled"]:
+                l.warn(f"Account {account_name} is disabled.")
+                return
+                
+            def on_success(data):
+                l.info(f"Account {account_name} launched successfully.")
+                l.info(f"Data: {data}")
+                
+            def on_fail(data):
+                l.error(f"Account {account_name} failed to launch.")
+                l.info(f"Data: {data}")
+                
+            l.trace(f"Calling RAMWS.launch_account with {account_name}")
+            RAMWS.launch_account(account=account_name, placeid="15532962292", jobid=account_data["server_url"], join_vip=True, callback=lambda data: on_success(data) if data["success"] else on_fail(data))
+                
+        except Exception as e:
+            l.error(f"Failed to launch account: {account_name}. Error: {e}")
+            pass
 
     def launch_all_accounts(self):
         """Inicia todas as contas habilitadas."""
@@ -441,26 +534,9 @@ class MultiAccountPage(ttk.Frame):
         l.info("Launching all accounts...")
         for item in self.accounts_treeview.get_children():  # Pega todas as linhas do Treeview
             account = self.accounts_treeview.item(item, "values")[0]  # Pega a conta
-            is_enabled = Config.get(
-                section=f"{self.RWS_ACCOUNTS_SECTION_PREFIX}{account}",
-                key="enabled",
-                fallback=True,
-            )
-            is_enabled = is_enabled.lower() == "true"
+            account_data = self.get_account_config(account)
             
-            server_url = Config.get(
-                section=f"{self.RWS_ACCOUNTS_SECTION_PREFIX}{account}",
-                key="server_url",
-                fallback=False,
-            )
-            
-            webhook_url = Config.get(
-                section=f"{self.RWS_ACCOUNTS_SECTION_PREFIX}{account}",
-                key="webhook_url",
-                fallback=False,
-            )
-            
-            if not is_enabled:
+            if not account_data["is_enabled"]:
                 l.warn(f"Skipping account {account} as it is disabled.")
                 continue  # Pula para a próxima iteração se a conta não está habilitada
             
@@ -474,5 +550,5 @@ class MultiAccountPage(ttk.Frame):
                 l.error(f"Failed to launch account {account}: {data['error']}")
                 pass
             
-            RAMWS.launch_account(account=account, placeid="15532962292", jobid=server_url, join_vip=True, callback=lambda data: on_success(data) if data["success"] else on_fail(data))
+            RAMWS.launch_account(account=account, placeid="15532962292", jobid=account_data["server_url"], join_vip=True, callback=lambda data: on_success(data) if data["success"] else on_fail(data))
             
