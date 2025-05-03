@@ -183,6 +183,7 @@ class MultiAccountPage(ttk.Frame):
         # > Treeview Context menu
         self.accounts_treeview.bind("<Button-3>", self.treeview_context_menu)
         self.treeview_menu = tk.Menu(self.accounts_treeview, tearoff=0)
+        self.treeview_menu.add_command(label="Disable/enable account", command=self.context_toggle_account)
         self.treeview_menu.add_command(label="Launch account", command=self.context_launch_account)
         self.treeview_menu.add_command(label="Debuginfo", command=self.context_debug_info)
 
@@ -257,12 +258,13 @@ class MultiAccountPage(ttk.Frame):
         column_id = self.accounts_treeview.identify_column(event.x)
         column_index = int(column_id[1:]) - 1  # Colunas começam em 1 no Treeview
 
-        # Se for a coluna "Account", alterna o status (habilitar/desabilitar)
-        if column_index == 0:  # A "Account" é a coluna de índice 0
-            self.toggle_account(item_id)
-            self.accounts_treeview.selection_remove(
-                self.accounts_treeview.selection()
-            ),
+        if column_index == 0:  # account is un-editable
+            # # NOT USING THIS ANYMORE: TOGGLE ACOUNT VIA CONTEXT MENU
+            # self.toggle_account(item_id)
+            # self.accounts_treeview.selection_remove(
+            #     self.accounts_treeview.selection()
+            # ),
+            pass
         else:
             # Se for qualquer outra coluna, permite a edição
             self.on_edit(event)
@@ -463,6 +465,15 @@ class MultiAccountPage(ttk.Frame):
 
         # Chama o método list_accounts do RAMWS
         RAMWS.list_accounts(update_treeview)
+        
+    def context_toggle_account(self):
+        selected = self.accounts_treeview.selection()
+        for item_id in selected:
+            account = self.accounts_treeview.item(item_id, "values")[0]
+            self.toggle_account(item_id)
+            self.accounts_treeview.selection_remove(
+                self.accounts_treeview.selection()
+            )
         
     def context_launch_account(self):
         selected = self.accounts_treeview.selection()
