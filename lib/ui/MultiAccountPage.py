@@ -2,10 +2,9 @@ import tkinter as tk
 import lib.ui.widgets as ui
 import logging
 from collections import defaultdict
-from tkinter import ttk
+from tkinter import ttk, messagebox
 from lib.config import Config
 from lib.ramws import RAMWS
-
 
 class MultiAccountPage(ttk.Frame):
     def __init__(self, parent, manager, padx=10, pady=5):
@@ -135,7 +134,7 @@ class MultiAccountPage(ttk.Frame):
         # )
 
         # > Define treeview columns
-        columns = ("Account", "Private Server URL", "Alternate Webhook URL")
+        columns = ("Account", "Private Server Share URL", "Alternate Webhook URL")
         self.accounts_treeview = ttk.Treeview(
             treeview_frame,
             columns=columns,
@@ -207,7 +206,7 @@ class MultiAccountPage(ttk.Frame):
         self.frame_success.update_idletasks()
         total_width = self.accounts_treeview.winfo_width()
         self.accounts_treeview.column("Account", width=int(total_width * 0.25))
-        self.accounts_treeview.column("Private Server URL", width=int(total_width * 0.35))
+        self.accounts_treeview.column("Private Server Share URL", width=int(total_width * 0.35))
         self.accounts_treeview.column("Alternate Webhook URL", width=int(total_width * 0.4))
 
 
@@ -312,6 +311,7 @@ class MultiAccountPage(ttk.Frame):
 
     def on_edit(self, event):
         """Permite edição das células (exceto Account) ao dar um duplo clique e atualiza `self.all_data` corretamente."""
+        l = self.__getLogger("on_edit")
         selected_item = self.accounts_treeview.selection()
         if not selected_item:
             return
@@ -338,13 +338,108 @@ class MultiAccountPage(ttk.Frame):
         entry.place(x=x, y=y, width=width, height=height)
 
         def save_edit(event):
+            l = self.__getLogger("save_edit")
             """Salva a edição e atualiza Treeview, self.all_data e Config."""
+            old_value = values[column_index]
+            l.debug(f"Old value: {old_value}")
             new_value = entry.get().strip()
+            l.debug(f"New value: {new_value}")
             entry.destroy()
 
             if new_value == values[column_index]:
                 return  # Nenhuma mudança foi feita
 
+            # Salvar a edição no Config
+            account = values[0]  # "Account" é sempre o primeiro valor na linha
+            account_section = f"{self.RWS_ACCOUNTS_SECTION_PREFIX}{account}"
+
+            #  @FIXME: ⚠️ If treeview is filtered, the duplicate-private-server validation WILL NOT work properly ⚠️
+            # !!! long yap warning
+            # Assume UserA=server1 and UserB=server2
+            # If you filter "UserA" making it so only UserA is shown in the treeview, and then you edit UserA=server2, 
+            # it will allow you to save it when in reality it should not be allowed to save it because that server 
+            # already exists.
+            # This is due to the part of code that removes orphan configurations. To fix this, we need a hashmap that 
+            # saves every existing itemid and its data, so we dont rely on the treeview to know the entire dataset the 
+            # treeview holds. 
+            # The treeview should only be used to display the data, and the hashmap should be used to validate the 
+            # actual existing data. Obviously, the treeview should always reflect the hashmap's values.
+            #
+            # I want to solve this by coding an ui widget for Treeview, with useful/simplified methods just like what 
+            # we did for ui.CheckboxEntry etc... that handles themselves.
+            if column_index == 1:  # Coluna 1: Server URL
+                # new value must contain sharelink
+                # value must be like this:
+                # https://www.roblox.com/share?code=7d1c05209972ca47a21bfd5981e67079&type=Server
+                
+                #if newvalue is an empty cell
+                if not new_value.startswith("https://www.roblox.com/share?code=") and new_value != "":
+                    messagebox.showerror("Error", "That is not a valid share code!\n\nA valid share URL looks like this: https://www.roblox.com/share?code=0a0a05209002ca47a21bfd5981e67079&type=Server")
+                    return
+                    
+                
+                
+                # go over every account section, and check if new_value is duplicated
+                if new_value != "": # only checks if its a duplicate value if theres content. if its an empty cell, dont check for duplicates
+                    for section in Config.get_sections():
+                        if section.startswith(self.RWS_ACCOUNTS_SECTION_PREFIX) and section != account_section:
+                            account_being_checked = section[len(self.RWS_ACCOUNTS_SECTION_PREFIX):]
+                            if Config.get(section, "server_url") == new_value:
+                                # Verifica se essa conta está no Treeview
+                                found_in_treeview = False
+                                for iid in self.accounts_treeview.get_children():
+                                    item_values = self.accounts_treeview.item(iid, "values")
+                                    if item_values[0] == account_being_checked:
+                                        found_in_treeview = True
+                                        break
+
+                                if found_in_treeview:
+                                    result = messagebox.askyesno("Duplicate Server URL", 
+                                        f"This server is already being used by account '{account_being_checked}'.\n"
+                                        f"Do you want to move it to account '{account}' instead?"
+                                    )
+
+                                    if not result:
+                                        l.debug("User cancelled the swap.")
+                                        return
+                                    else:
+                                        l.debug("User confirmed the swap.")
+
+                                        # Atualiza o Treeview: encontra o item que tem essa conta
+                                        for iid in self.accounts_treeview.get_children():
+                                            item_values = self.accounts_treeview.item(iid, "values")
+                                            if item_values[0] == account_being_checked:
+                                                # Limpa o server_url dessa outra conta no Treeview
+                                                item_values = list(item_values)
+                                                item_values[1] = ""
+                                                self.accounts_treeview.item(iid, values=item_values)
+
+                                                # Atualiza também self.all_data
+                                                for i, data in enumerate(self.all_data):
+                                                    if data[0] == account_being_checked:
+                                                        updated_data = list(data)
+                                                        updated_data[1] = ""
+                                                        self.all_data[i] = tuple(updated_data)
+                                                        break
+                                                break
+
+                                        # Limpa o valor no Config da conta antiga
+                                        Config.set(section=section, key="server_url", value="")
+                                else:
+                                    # Conta não existe mais na UI, deletar a seção inválida
+                                    l.warn(f"Removing orphaned config section: {section}")
+                                    Config.remove_section(section)
+                                    
+                                
+                Config.set(section=account_section, key="server_url", value=new_value)
+            elif column_index == 2:  # Coluna 2: Webhook URL
+                Config.set(section=account_section, key="webhook_url", value=new_value)
+
+            # Salvar o estado da conta no Config
+            enabled = self.account_status.get(item, True)
+            Config.set(section=account_section, key="enabled", value=str(enabled))
+            
+            
             # Atualiza o valor na linha do Treeview
             values[column_index] = new_value
             self.accounts_treeview.item(item, values=values)
@@ -356,19 +451,8 @@ class MultiAccountPage(ttk.Frame):
                     updated_data[column_index] = new_value
                     self.all_data[i] = tuple(updated_data)
                     break
-
-            # Salvar a edição no Config
-            account = values[0]  # "Account" é sempre o primeiro valor na linha
-            account_section = f"{self.RWS_ACCOUNTS_SECTION_PREFIX}{account}"
-
-            if column_index == 1:  # Coluna 1: Server URL
-                Config.set(section=account_section, key="server_url", value=new_value)
-            elif column_index == 2:  # Coluna 2: Webhook URL
-                Config.set(section=account_section, key="webhook_url", value=new_value)
-
-            # Salvar o estado da conta no Config
-            enabled = self.account_status.get(item, True)
-            Config.set(section=account_section, key="enabled", value=str(enabled))
+            
+            # Salvar, de fato
             Config.save()
 
         entry.bind("<Return>", save_edit)

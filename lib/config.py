@@ -65,6 +65,11 @@ class ConfigManager:
             self.config.add_section(section)
             
         self.config.set(section, key, str(value))
+    
+    def remove_section(self, section):
+        """Removes a section"""
+        if self.has_section(section):
+            self.config.remove_section(section)
         
     def has_section(self, section):
         """Checks if section exists"""
@@ -73,6 +78,7 @@ class ConfigManager:
     def get_sections(self):
         """Returns list of all sections"""
         return self.config.sections()
+    
 
 # Create singleton instance
 Config = ConfigManager()
