@@ -113,7 +113,32 @@ class RAMWS:
             l.error(f"Error while listing accounts: {str(e)}")
             callback([])  # Caso ocorra uma exceção, retorna uma lista vazia
             
-            
+    # Dangerous! Needs "Configuration > Developer > Allow GetCookie Method" to be enabled on RAM
+    def get_cookie(self, account):
+        l = self.__getLogger("get_cookie")
+        #l.debug(f"Getting cookie for account: {account}")
+        
+        url = f"{self.ramws_full_url}/GetCookie?{self.ramws_password}&Account={account}"
+        
+        return_data = None
+        
+        try:
+            response = requests.get(url, timeout=10)
+            ws_error = response.headers.get("ws-error", "")
+
+            if not ws_error:
+                # success
+                return_data = response.text
+            else:
+                # error
+                l.error(f"WS Error while getting cookie")
+        except requests.RequestException as e:
+            l.error(f"Error while getting cookie: {str(e)}")
+        
+        return return_data
+        
+        
+    # Dangerous! (i think it) Needs "Configuration > Developer > Allow GetCookie Method" to be enabled on RAM
     def get_csrf_token(self, account):
         """Obtains the CSRF token for the given account."""
         l = self.__getLogger("get_csrf_token")
@@ -121,12 +146,7 @@ class RAMWS:
         
         url = f"{self.ramws_full_url}/GetCSRFToken?{self.ramws_password}&Account={account}"
         
-        return_data = {
-            "account": account,
-            "csrf_token": None,
-            "success": False,
-            "error": None
-        }
+        return_data = None
         
         try:
             response = requests.get(url, timeout=10)
@@ -135,19 +155,81 @@ class RAMWS:
             if not ws_error:
                 # success
                 l.trace(f"{account}'s CSRF Token: {response.text[0]}{'*' * (len(response.text) - 2)}{response.text[-1]}")
-                return_data["success"] = True
-                return_data["csrf_token"] = response.text
+                # return_data["success"] = True
+                return_data = response.text
             else:
                 # failed
-                return_data["error"] = ws_error
+                # return_data["error"] = ws_error
+                l.error(f"WS Error while getting CSRF Token")
+                pass
         except requests.RequestException as e:
             l.error(f"{account} : Failed to get CSRF Token: {str(e)}")
-            return_data["error"] = str(e)
+            # return_data["error"] = str(e)
 
         return return_data
-                
+          
+          
+    # This is a custom, utilitary method that does not exist in RAMWS as of now.
+    # Converts a roblox.com/share link into a privateServerCode, using a csrf_token.
+    def resolve_share_link(self, resolver_account, url, timeout=10):
+        """Converts a roblox.com/share link into a privateServerCode, through an account that will be "sessioned" to resolve our link.
+
+        Args:
+            resolver_account (string): Account that will be used to resolve the link. (will use the account's cookies and csrf token, obtained through RAMWS)
+            url (string): The link to be resolved.
+            timeout (int, optional): Maximum time (in seconds) to wait for link-resolving request. Defaults to 10.
+
+        Raises:
+            ValueError: If the shared_link is not a valid roblox.com/share link.
+
+        Returns:
+            _type_: _description_
+        """
+        l = self.__getLogger("shareLinkResolver")
+        l.debug(f"Extracting server code from shared link: {url}")
         
-    def launch_account(self, account, placeid, jobid, follow_user=False, join_vip=False, callback=None):
+        # validate it is a valid link:
+        if not str(url).lower().startswith("https://www.roblox.com/share?code=") and not str(url).lower().endswith("&type=server"):
+            raise ValueError(f"Invalid share link: {url}")
+        
+        # authenticated session to make the request
+        session = requests.Session()
+        session.cookies.set(
+            name=".ROBLOSECURITY",
+            value=self.get_cookie(resolver_account),
+            domain=".roblox.com"
+        )
+        
+        headers = {
+            "X-CSRF-TOKEN": self.get_csrf_token(resolver_account),
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "linkId": url.split("code=")[1].split("&")[0], # https://www.roblox.com/share?code=00e1ce0a27ab7142bde4aec006b57f01&type=Server
+            "linkType": "Server"
+        }
+        
+        
+        try:
+            response = session.post("https://apis.roblox.com/sharelinks/v1/resolve-link", headers=headers, json=payload, timeout=timeout)
+            response.raise_for_status()
+            data = response.json()
+            l.trace(f"\"{url}\": {data}")
+            
+            server_data = data.get("privateServerInviteData")
+            if server_data and server_data.get("status") == "Valid":
+                l.test("Link is valid")
+                return server_data.get("linkCode")
+            else:
+                l.test("Link is invalid")
+                return None
+
+        except Exception as e:
+            l.error(f"Error while extracting server code: {str(e)}")
+            return None
+    
+        
+    def launch_account(self, account, placeid, jobid, return_server_code=False, follow_user=False, join_vip=False, callback=None):
         """Inicia uma conta a partir do endpoint /LaunchAccount."""
         l = self.__getLogger("launch_account")
         l.debug(f"Launching account: {account}")

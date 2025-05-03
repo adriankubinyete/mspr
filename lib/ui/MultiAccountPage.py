@@ -1,10 +1,14 @@
 import tkinter as tk
 import lib.ui.widgets as ui
 import logging
+import threading
 from collections import defaultdict
 from tkinter import ttk, messagebox
 from lib.config import Config
 from lib.ramws import RAMWS
+
+ServerCodeCache = defaultdict(dict)
+LaunchedAccountsCache = defaultdict(dict)
 
 class MultiAccountPage(ttk.Frame):
     def __init__(self, parent, manager, padx=10, pady=5):
@@ -21,8 +25,10 @@ class MultiAccountPage(ttk.Frame):
 
         self._create_widgets()
 
+
     def __getLogger(self, name):
         return logging.getLogger(f"mpsr.page:MultiAccount.{name}")
+
 
     def _create_widgets(self):
         """Cria os widgets principais, mas não os frames de sucesso/erro."""
@@ -36,6 +42,7 @@ class MultiAccountPage(ttk.Frame):
 
         # Inicializa com a tela de erro
         self.switch_to_error()
+
 
     # failed to connect to ramws
     def create_error_frame(self):
@@ -70,6 +77,7 @@ class MultiAccountPage(ttk.Frame):
             takefocus=False,
         )
         btn_settings.pack(side="right", padx=10, fill="x")
+
 
     # connected to ramws
     def create_success_frame(self):
@@ -248,6 +256,7 @@ class MultiAccountPage(ttk.Frame):
                 if not enabled:
                     self.accounts_treeview.item(item_id, tags=("disabled",))
 
+
     def on_double_click(self, event):
         """Permite edição das células (exceto Account) ao dar um duplo clique e alterna o status na coluna Account."""
         item_id = self.accounts_treeview.identify_row(event.y)
@@ -267,6 +276,7 @@ class MultiAccountPage(ttk.Frame):
         else:
             # Se for qualquer outra coluna, permite a edição
             self.on_edit(event)
+
 
     def treeview_context_menu(self, event):
         region = self.accounts_treeview.identify("region", event.x, event.y)
@@ -308,6 +318,7 @@ class MultiAccountPage(ttk.Frame):
             self.accounts_treeview.item(item_id, values=values, tags=())  # Remove efeito escuro
         else:
             self.accounts_treeview.item(item_id, values=values, tags=("disabled",))
+
 
     def on_edit(self, event):
         """Permite edição das células (exceto Account) ao dar um duplo clique e atualiza `self.all_data` corretamente."""
@@ -458,15 +469,18 @@ class MultiAccountPage(ttk.Frame):
         entry.bind("<Return>", save_edit)
         entry.bind("<FocusOut>", lambda e: entry.destroy())
 
+
     def switch_to_success(self):
         """Exibe o frame de sucesso e oculta o de erro."""
         self.frame_error.pack_forget()
         self.frame_success.pack(fill="both", expand=True)
 
+
     def switch_to_error(self):
         """Exibe o frame de erro e oculta o de sucesso."""
         self.frame_success.pack_forget()
         self.frame_error.pack(fill="both", expand=True)
+
 
     def on_connection_checked(self, result):
         """Callback chamado quando a verificação de conexão for concluída."""
@@ -474,6 +488,7 @@ class MultiAccountPage(ttk.Frame):
             self.switch_to_success()
         else:
             self.switch_to_error()
+
 
     def start_connection(self):
         """Inicia a tentativa de conexão e o monitoramento contínuo."""
@@ -495,6 +510,7 @@ class MultiAccountPage(ttk.Frame):
 
         # Inicia o keepalive
         RAMWS.start_connection_checker(self.on_connection_checked)
+
 
     def fetch_accounts(self):
         """Busca as contas novamente do RAMWS e atualiza o Treeview."""
@@ -550,6 +566,7 @@ class MultiAccountPage(ttk.Frame):
         # Chama o método list_accounts do RAMWS
         RAMWS.list_accounts(update_treeview)
         
+        
     def context_toggle_account(self):
         selected = self.accounts_treeview.selection()
         for item_id in selected:
@@ -559,19 +576,27 @@ class MultiAccountPage(ttk.Frame):
                 self.accounts_treeview.selection()
             )
         
+        
     def context_launch_account(self):
         selected = self.accounts_treeview.selection()
         for item_id in selected:
             account = self.accounts_treeview.item(item_id, "values")[0]
             self.launch_single_account(account)
 
+
     def context_debug_info(self):
-        l = self.__getLogger("context_debug_info")
-        selected = self.accounts_treeview.selection()
-        for item_id in selected:
-            account = self.accounts_treeview.item(item_id, "values")[0]
-            
-            l.debug(f"[DEBUG-CONTEXT] CSRF Token: {RAMWS.get_csrf_token(account)}")
+        account = self.accounts_treeview.item(self.accounts_treeview.selection()[0], "values")[0]
+        def background():
+            l = self.__getLogger("context_debug")
+            try:
+                l.info(f"Account: {account}")
+                data = RAMWS.resolve_share_link(resolver_account=account, url="https://www.roblox.com/share?code=37f3ef98bf46aa4897c2768c2dbc8cbc&type=Server")
+                l.trace(data)
+            except Exception as e:
+                l.error(f"Error resolving share link...\n{e}")
+
+        # Start in background thread
+        threading.Thread(target=background, daemon=True).start()
             
 
     def get_account_config(self, account_name):
@@ -600,28 +625,38 @@ class MultiAccountPage(ttk.Frame):
             
         return d
     
+    
     def launch_single_account(self, account_name):
-        l = self.__getLogger("launch_single_account")
-        try:
-            account_data = self.get_account_config(account_name)
-            if not account_data["is_enabled"]:
-                l.warn(f"Account {account_name} is disabled.")
-                return
-                
-            def on_success(data):
-                l.info(f"Account {account_name} launched successfully.")
-                l.info(f"Data: {data}")
-                
-            def on_fail(data):
-                l.error(f"Account {account_name} failed to launch.")
-                l.info(f"Data: {data}")
-                
-            l.trace(f"Calling RAMWS.launch_account with {account_name}")
-            RAMWS.launch_account(account=account_name, placeid="15532962292", jobid=account_data["server_url"], join_vip=True, callback=lambda data: on_success(data) if data["success"] else on_fail(data))
-                
-        except Exception as e:
-            l.error(f"Failed to launch account: {account_name}. Error: {e}")
-            pass
+        def background():
+            l = self.__getLogger("launch_single_account")
+            try:
+                account_data = self.get_account_config(account_name)
+                if not account_data["is_enabled"]:
+                    l.warn(f"Account {account_name} is disabled.")
+                    return
+
+                def on_success(data):
+                    l.info(f"Account {account_name} launched successfully.")
+                    l.info(f"Data: {data}")
+
+                def on_fail(data):
+                    l.error(f"Account {account_name} failed to launch.")
+                    l.info(f"Data: {data}")
+
+                l.trace(f"Calling RAMWS.launch_account with {account_name}")
+                RAMWS.launch_account(
+                    account=account_name,
+                    placeid="15532962292",
+                    jobid=account_data["server_url"],
+                    join_vip=True,
+                    callback=lambda data: on_success(data) if data["success"] else on_fail(data)
+                )
+            except Exception as e:
+                l.error(f"Failed to launch account: {account_name}. Error: {e}")
+
+        # Start in background thread
+        threading.Thread(target=background, daemon=True).start()
+
 
     def launch_all_accounts(self):
         """Inicia todas as contas habilitadas."""
