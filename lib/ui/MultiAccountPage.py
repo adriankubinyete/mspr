@@ -213,13 +213,13 @@ class MultiAccountPage(ttk.Frame):
         footer_frame.pack(fill="x", pady=(5, 10))
 
         # > Launch Accounts button
-        launch_button = ttk.Button(
+        self.launch_all_button = ttk.Button(
             footer_frame,
             text="Launch Accounts",
             command=self.launch_all_accounts,
             takefocus=False,
         )
-        launch_button.pack()
+        self.launch_all_button.pack()
 
         # > Adjust column widths after initial layout
         self.frame_success.update_idletasks()
@@ -658,8 +658,7 @@ class MultiAccountPage(ttk.Frame):
                 l.info(f"Trying to launch account \"{account_name}\"")
                 # >>> Converting server_url to linkCode, so we can relate it to a process later on
                 # This is essential before we do anything else!
-                link_code = ServerCodeCache[account_data["server_url"]]
-                if not link_code:
+                if not ServerCodeCache[account_data["server_url"]]:
                     l.warn("cache miss: " + account_data["server_url"])
                     link_code = RAMWS.resolve_share_link(resolver_account=account_name, url=account_data["server_url"])
                     if not link_code:
@@ -674,7 +673,7 @@ class MultiAccountPage(ttk.Frame):
                     l.warn(f"Overriding FPS of account \"{account_name}\" to {FPS_OVERRIDE_VALUE}")
                     RAMWS.set_field(account=account_name, field="MaxFPS", value=FPS_OVERRIDE_VALUE)
                 else:
-                    RAMWS.remove_field(account=account_name, field="MaxFPS")
+                    RAMWS.set_field(account=account_name, field="MaxFPS", value="9999")
                 
                 # >>> Launching
                 RAMWS.launch_account(
@@ -692,26 +691,27 @@ class MultiAccountPage(ttk.Frame):
 
 
     def launch_all_accounts(self):
-        """Inicia todas as contas habilitadas."""
-        l = self.__getLogger("launch_all_accounts")
-        l.info("Launching all accounts...")
-        for item in self.accounts_treeview.get_children():  # Pega todas as linhas do Treeview
-            account = self.accounts_treeview.item(item, "values")[0]  # Pega a conta
-            account_data = self.get_account_config(account)
-            
-            if not account_data["is_enabled"]:
-                l.warn(f"Skipping account {account} as it is disabled.")
-                continue  # Pula para a próxima iteração se a conta não está habilitada
-            
-            l.info(f"Launching account: {account}")
-            
-            def on_success(data):
-                l.info(f"Account {account} launched successfully.")
-                pass
-            
-            def on_fail(data):
-                l.error(f"Failed to launch account {account}: {data['error']}")
-                pass
-            
-            RAMWS.launch_account(account=account, placeid="15532962292", jobid=account_data["server_url"], join_vip=True, callback=lambda data: on_success(data) if data["success"] else on_fail(data))
+        """Inicia todas as contas habilitadas em background, desativa botão com feedback."""
+
+        def background():
+            l = self.__getLogger("launch_all_accounts")
+            l.info("Launching all accounts...")
+
+            try:
+                if hasattr(self, "launch_all_button"):
+                    original_text =  self.launch_all_button.cget("text")
+                    self.launch_all_button.config(state="disabled", text="Launching...")
+                    self.launch_all_button.after(5000, lambda: self.launch_all_button.config(state="normal", text=original_text))
+            except Exception as e:
+                l.warn(f"Could not modify launch_all_button: {e}")
+
+            for item in self.accounts_treeview.get_children():
+                account = self.accounts_treeview.item(item, "values")[0]
+                try:
+                    self.launch_single_account(account)
+                except Exception as e:
+                    l.error(f"Error launching account {account}: {e}")
+
+        threading.Thread(target=background, daemon=True).start()
+
             

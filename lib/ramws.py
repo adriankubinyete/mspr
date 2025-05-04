@@ -162,7 +162,7 @@ class RAMWS:
             
     def remove_field(self, account, field, timeout=5):
         l = self.__getLogger("remove_field")
-        # l.debug(f"Removing field for account: {account}")
+        l.debug(f"Removing field \"{field}\" for account \"{account}\"")
 
         url = f"{self.ramws_full_url}/RemoveField?{self.ramws_password}&Account={account}&Field={field}"
 
