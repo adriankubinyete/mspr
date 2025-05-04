@@ -52,10 +52,12 @@ class MultiAccountPage(ttk.Frame):
         label_error = ttk.Label(
             self.frame_error,
             text=(
-                "Failed to connect to Roblox Account Manager WebServer!\n"
-                'Make sure the "Enable Web Server" option is enabled in the Roblox Account Manager, and check if the port and passwords are correct.\n\n'
-                'The "Every Request Requires Password" must be enabled and you must set a password for the web server.\n'
-                "Once everything is correct, click Retry."
+                'Failed to connect to Roblox Account Manager WebServer!\n\n'
+                '1. Make sure your Roblox Account Manager (RAM) is running.\n\n'
+                '2. Make sure the "Enable Web Server" option is enabled in RAM.\n\n'
+                '3. Make sure the "Every Request Requires Password" option is enabled in RAM, and set a password for the web server.\n\n'
+                '4. Confirm if the Settings port and password match with the Web Server\'s port and password.\n\n'
+                'After you\'ve done all of the above, click Retry.'
             ),
             wraplength=400,
             justify="center",
@@ -103,10 +105,9 @@ class MultiAccountPage(ttk.Frame):
         override_fps_toggleentry = ui.ToggleableEntry(test_frame, section=self.MULTIACCOUNT_SECTION, label="max_fps_override", key="max_fps_override", info="If enabled, launched accounts will use this as their maximum FPS.")
         override_fps_toggleentry.pack(fill="x", padx=5, pady=5)
         
-        override_server_toggleentry = ui.ToggleableEntry(test_frame, section=self.MULTIACCOUNT_SECTION, label="server_override", key="server_override", info="If enabled, launched accounts will use this server code.")
+        override_server_toggleentry = ui.ToggleableEntry(test_frame, section=self.MULTIACCOUNT_SECTION, label="server_override", key="server_override", info="If enabled, launched accounts will use this server URL.")
         override_server_toggleentry.pack(fill="x", padx=5, pady=5)
         
-
         # --- Search Frame (top)
         search_frame = tk.Frame(self.frame_success)
         search_frame.pack(fill="x", pady=(5, 5))
