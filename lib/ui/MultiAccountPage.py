@@ -103,6 +103,9 @@ class MultiAccountPage(ttk.Frame):
         override_fps_toggleentry = ui.ToggleableEntry(test_frame, section=self.MULTIACCOUNT_SECTION, label="max_fps_override", key="max_fps_override", info="If enabled, launched accounts will use this as their maximum FPS.")
         override_fps_toggleentry.pack(fill="x", padx=5, pady=5)
         
+        override_server_toggleentry = ui.ToggleableEntry(test_frame, section=self.MULTIACCOUNT_SECTION, label="server_override", key="server_override", info="If enabled, launched accounts will use this server code.")
+        override_server_toggleentry.pack(fill="x", padx=5, pady=5)
+        
 
         # --- Search Frame (top)
         search_frame = tk.Frame(self.frame_success)
@@ -676,10 +679,17 @@ class MultiAccountPage(ttk.Frame):
                     RAMWS.set_field(account=account_name, field="MaxFPS", value="9999")
                 
                 # >>> Launching
+                JOB_ID = account_data["server_url"]
+                SERVER_OVERRIDE_ENABLED = str(Config.get(section=self.MULTIACCOUNT_SECTION, key="server_override_enabled", fallback=0)) == "1"
+                SERVER_OVERRIDE_VALUE = Config.get(section=self.MULTIACCOUNT_SECTION, key="server_override", fallback="")
+                if SERVER_OVERRIDE_ENABLED: 
+                    l.warn(f"Overriding server of account \"{account_name}\" to {SERVER_OVERRIDE_VALUE}")
+                    JOB_ID = SERVER_OVERRIDE_VALUE
+                
                 RAMWS.launch_account(
                     account=account_name,
                     placeid="15532962292",
-                    jobid=account_data["server_url"],
+                    jobid=JOB_ID,
                     join_vip=True,
                     callback=lambda data: on_success(data) if data["success"] else on_fail(data)
                 )
