@@ -112,6 +112,81 @@ class RAMWS:
             # Caso ocorra uma exceção (como timeout, falha na rede, etc.)
             l.error(f"Error while listing accounts: {str(e)}")
             callback([])  # Caso ocorra uma exceção, retorna uma lista vazia
+    
+    
+    def get_field(self, account, field, timeout=5):
+        l = self.__getLogger("get_field")
+        # l.debug(f"Getting field for account: {account}")
+
+        url = f"{self.ramws_full_url}/GetField?{self.ramws_password}&Account={account}&Field={field}"
+
+        return_data = None
+        
+        try:
+            response = requests.get(url, timeout=timeout)
+            ws_error = response.headers.get("ws-error", "")
+
+            if not ws_error:
+                return_data = response.text
+            else:
+                l.error(f"WS Error while getting field")
+                return_data = None
+        except requests.RequestException as e:
+            l.error(f"Error while getting field: {str(e)}")
+        
+        return return_data
+    
+    
+    def set_field(self, account, field, value, timeout=5):
+        l = self.__getLogger("set_field")
+        # l.debug(f"Setting field for account: {account}")
+        
+        url = f"{self.ramws_full_url}/SetField?{self.ramws_password}&Account={account}&Field={field}&Value={value}"
+        
+        return_data = None
+        
+        try:
+            response = requests.get(url, timeout=timeout)
+            ws_error = response.headers.get("ws-error", "")
+
+            if not ws_error:
+                return_data = True
+            else:
+                l.error(f"WS Error while setting field")
+                return_data = False
+        except requests.RequestException as e:
+            l.error(f"Error while setting field: {str(e)}")
+        
+        return return_data
+            
+            
+    def remove_field(self, account, field, timeout=5):
+        l = self.__getLogger("remove_field")
+        # l.debug(f"Removing field for account: {account}")
+
+        url = f"{self.ramws_full_url}/RemoveField?{self.ramws_password}&Account={account}&Field={field}"
+
+        return_data = None
+
+        try:
+            response = requests.get(url, timeout=timeout)
+            ws_error = response.headers.get("ws-error", "")
+            
+            if not ws_error:
+                return_data = True
+            else:
+                l.error(f"WS Error while removing field")
+                return_data = False
+        except requests.RequestException as e:
+            l.error(f"Error while removing field: {str(e)}")
+
+        return return_data
+
+
+    def get_account_info(self, account, timeout=10):
+        l = self.__getLogger("get_account_info")
+        # l.debug(f"Getting account info for account: {account}")
+            
             
     # Dangerous! Needs "Configuration > Developer > Allow GetCookie Method" to be enabled on RAM
     def get_cookie(self, account):

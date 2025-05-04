@@ -21,6 +21,7 @@ class MultiAccountPage(ttk.Frame):
         self.ram_webserver_modal = None
         self.all_items = []
 
+        self.MULTIACCOUNT_SECTION = "CONFIG_MULTIACCOUNT"
         self.RWS_ACCOUNTS_SECTION_PREFIX = "RWS_ACCOUNT_"
 
         self._create_widgets()
@@ -88,10 +89,20 @@ class MultiAccountPage(ttk.Frame):
         self.frame_success.pack(fill="both", expand=True)
 
         # --- Test Frame (first things, just testing. control panel)        
-        test_frame = tk.Frame(self.frame_success, background="blue", borderwidth=1)
+        test_frame = tk.Frame(self.frame_success)
+        # red border on test frame
+        test_frame.configure(borderwidth=1, relief="solid")
         test_frame.pack(fill="x", pady=5, padx=5)
         
+        # > centered label saying "test area"
+        test_label = ttk.Label(test_frame, text="⚠️ Test Area ⚠️")
+        test_label.pack(padx=5, pady=(2,0))
+        
         # > "keep-alive checkbox"
+        # > "override fps checkbox"
+        override_fps_toggleentry = ui.ToggleableEntry(test_frame, section=self.MULTIACCOUNT_SECTION, label="max_fps_override", key="max_fps_override", info="If enabled, launched accounts will use this as their maximum FPS.")
+        override_fps_toggleentry.pack(fill="x", padx=5, pady=5)
+        
 
         # --- Search Frame (top)
         search_frame = tk.Frame(self.frame_success)
@@ -585,6 +596,7 @@ class MultiAccountPage(ttk.Frame):
 
 
     def context_debug_info(self):
+        # ignore anything in here, just for testing purposes
         account = self.accounts_treeview.item(self.accounts_treeview.selection()[0], "values")[0]
         def background():
             l = self.__getLogger("context_debug")
@@ -632,18 +644,39 @@ class MultiAccountPage(ttk.Frame):
             try:
                 account_data = self.get_account_config(account_name)
                 if not account_data["is_enabled"]:
-                    l.warn(f"Account {account_name} is disabled.")
+                    l.warn(f"Account \"{account_name}\" is disabled.")
                     return
 
                 def on_success(data):
-                    l.info(f"Account {account_name} launched successfully.")
+                    l.info(f"Account \"{account_name}\" launched successfully.")
                     l.info(f"Data: {data}")
 
                 def on_fail(data):
-                    l.error(f"Account {account_name} failed to launch.")
+                    l.error(f"Account \"{account_name}\" failed to launch.")
                     l.info(f"Data: {data}")
 
-                l.trace(f"Calling RAMWS.launch_account with {account_name}")
+                l.info(f"Trying to launch account \"{account_name}\"")
+                # >>> Converting server_url to linkCode, so we can relate it to a process later on
+                # This is essential before we do anything else!
+                link_code = ServerCodeCache[account_data["server_url"]]
+                if not link_code:
+                    l.warn("cache miss: " + account_data["server_url"])
+                    link_code = RAMWS.resolve_share_link(resolver_account=account_name, url=account_data["server_url"])
+                    if not link_code:
+                        l.error(f"Failed to resolve share link for \"{account_name}\"")
+                        return
+                    ServerCodeCache[account_data["server_url"]] = link_code
+                
+                # >>> Account FPS
+                FPS_OVERRIDE_ENABLED = str(Config.get(section=self.MULTIACCOUNT_SECTION, key="max_fps_override_enabled", fallback=0)) == "1"
+                FPS_OVERRIDE_VALUE = Config.get(section=self.MULTIACCOUNT_SECTION, key="max_fps_override", fallback="")
+                if FPS_OVERRIDE_ENABLED and FPS_OVERRIDE_VALUE:
+                    l.warn(f"Overriding FPS of account \"{account_name}\" to {FPS_OVERRIDE_VALUE}")
+                    RAMWS.set_field(account=account_name, field="MaxFPS", value=FPS_OVERRIDE_VALUE)
+                else:
+                    RAMWS.remove_field(account=account_name, field="MaxFPS")
+                
+                # >>> Launching
                 RAMWS.launch_account(
                     account=account_name,
                     placeid="15532962292",
