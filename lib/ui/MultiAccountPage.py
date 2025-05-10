@@ -598,7 +598,7 @@ class MultiAccountPage(ttk.Frame):
         for item_id in selected:
             account = self.accounts_treeview.item(item_id, "values")[0]
             private_url = Config.get(section=f"{self.RWS_ACCOUNTS_SECTION_PREFIX}{account}", key="server_url", fallback="")
-            self.launch_single_account(account="masutty", override_server_url=private_url)
+            self.launch_single_account(account_name="masutty", force=True, override_server_url=private_url)
         
     def context_launch_account(self):
         selected = self.accounts_treeview.selection()
@@ -650,13 +650,13 @@ class MultiAccountPage(ttk.Frame):
         return d
     
     
-    def launch_single_account(self, account_name, override_server_url=None, override_max_fps=None):
+    def launch_single_account(self, account_name, force=False, override_server_url=None, override_max_fps=None):
         # this is ugly with all the overrides and whatnot, but works
         def background():
             l = self.__getLogger("launch_single_account")
             try:
                 account_data = self.get_account_config(account_name)
-                if not account_data["is_enabled"]:
+                if not account_data["is_enabled"] and not force:
                     l.warn(f"Account \"{account_name}\" is disabled.")
                     return
 
@@ -671,7 +671,7 @@ class MultiAccountPage(ttk.Frame):
                 l.info(f"Trying to launch account \"{account_name}\"")
                 # >>> Converting server_url to linkCode, so we can relate it to a process later on
                 # This is essential before we do anything else!
-                if not ServerCodeCache[account_data["server_url"]]:
+                if not ServerCodeCache[account_data["server_url"]] and not force:
                     l.warn("cache miss: " + account_data["server_url"])
                     link_code = RAMWS.resolve_share_link(resolver_account=account_name, url=account_data["server_url"])
                     if not link_code:
@@ -695,7 +695,7 @@ class MultiAccountPage(ttk.Frame):
                 
                 JOB_ID = account_data["server_url"]
                 if override_server_url: # manual override. you REALLY want to launch a different server. ok lets ignore any configuration then
-                    l.warn(f"CRITICAL! Manual override of account \"{account_name}\"'s server to {override_server_url}")
+                    l.warn(f"CRITICAL! Manual override of account {account_name}'s server to {override_server_url}")
                     JOB_ID = override_server_url
                 else: # configuration override. user specified a server to launch
                     SERVER_OVERRIDE_ENABLED = str(Config.get(section=self.MULTIACCOUNT_SECTION, key="server_override_enabled", fallback=0)) == "1"
