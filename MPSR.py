@@ -1,5 +1,6 @@
 import logging
 import tkinter as tk
+import threading
 from tkinter import ttk
 from collections import defaultdict
 
@@ -72,6 +73,8 @@ class Application:
             "Main": self.page_main,
             "Single Accounts": self.page_single_account,
             "Multi Accounts": self.page_multi_account,
+            "Tab Manager": self.page_tab_manager,
+            "Dev": self.page_development,
         }
         self.page_frames = defaultdict()
 
@@ -126,4 +129,20 @@ class Application:
         multi_account_page = ui.MultiAccountPage(page, self)
         multi_account_page.pack(fill="both", expand=True)
         l.trace(f"Starting RAMWS connection check")
-        multi_account_page.start_connection()
+        threading.Thread(
+            target=multi_account_page.start_connection, daemon=True
+        ).start()
+
+    def page_tab_manager(self, page):
+        l = self.__getLogger("page:tab_manager")
+        l.info("Called")
+        
+        tab_manager_page = ui.TabManagerPage(page)
+        tab_manager_page.pack(fill="both", expand=True)
+        
+    def page_development(self, page):
+        l = self.__getLogger("page:development")
+        l.info("Called")
+        
+        development_page = ui.DevelopmentPage(page)
+        development_page.pack(fill="both", expand=True)

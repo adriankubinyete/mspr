@@ -16,6 +16,8 @@ from lib.ui.modals.RAMWS import ModalRAMWSSettings
 
 # other items (standalone frames)
 from lib.ui.MultiAccountPage import MultiAccountPage
+from lib.ui.TabManager import TabManagerPage
+from lib.ui.pages.Development import DevelopmentPage
 
 """
 This file is basically an easy way to import all widgets.

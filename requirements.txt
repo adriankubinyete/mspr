@@ -1,3 +1,5 @@
 colorlog
 pynput
 psutil
+pyautogui
+pygetwindow

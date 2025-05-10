@@ -207,6 +207,7 @@ class MultiAccountPage(ttk.Frame):
         self.treeview_menu = tk.Menu(self.accounts_treeview, tearoff=0)
         self.treeview_menu.add_command(label="Disable/enable account", command=self.context_toggle_account)
         self.treeview_menu.add_command(label="Launch account", command=self.context_launch_account)
+        self.treeview_menu.add_command(label="Launch main account", command=self.context_launch_main_account)
         self.treeview_menu.add_command(label="Debuginfo", command=self.context_debug_info)
 
         # > Populate treeview
@@ -228,9 +229,9 @@ class MultiAccountPage(ttk.Frame):
         # > Adjust column widths after initial layout
         self.frame_success.update_idletasks()
         total_width = self.accounts_treeview.winfo_width()
-        self.accounts_treeview.column("Account", width=int(total_width * 0.25))
-        self.accounts_treeview.column("Private Server Share URL", width=int(total_width * 0.35))
-        self.accounts_treeview.column("Alternate Webhook URL", width=int(total_width * 0.4))
+        self.accounts_treeview.column("Account", width=int(total_width * 0.33))
+        self.accounts_treeview.column("Private Server Share URL", width=int(total_width * 0.33))
+        self.accounts_treeview.column("Alternate Webhook URL", width=int(total_width * 0.33))
 
 
     def filter_tree(self, event=None):
@@ -591,6 +592,13 @@ class MultiAccountPage(ttk.Frame):
                 self.accounts_treeview.selection()
             )
         
+      
+    def context_launch_main_account(self):
+        selected = self.accounts_treeview.selection()
+        for item_id in selected:
+            account = self.accounts_treeview.item(item_id, "values")[0]
+            private_url = Config.get(section=f"{self.RWS_ACCOUNTS_SECTION_PREFIX}{account}", key="server_url", fallback="")
+            self.launch_single_account(account="masutty", override_server_url=private_url)
         
     def context_launch_account(self):
         selected = self.accounts_treeview.selection()
@@ -642,7 +650,8 @@ class MultiAccountPage(ttk.Frame):
         return d
     
     
-    def launch_single_account(self, account_name):
+    def launch_single_account(self, account_name, override_server_url=None, override_max_fps=None):
+        # this is ugly with all the overrides and whatnot, but works
         def background():
             l = self.__getLogger("launch_single_account")
             try:
@@ -671,21 +680,29 @@ class MultiAccountPage(ttk.Frame):
                     ServerCodeCache[account_data["server_url"]] = link_code
                 
                 # >>> Account FPS
-                FPS_OVERRIDE_ENABLED = str(Config.get(section=self.MULTIACCOUNT_SECTION, key="max_fps_override_enabled", fallback=0)) == "1"
-                FPS_OVERRIDE_VALUE = Config.get(section=self.MULTIACCOUNT_SECTION, key="max_fps_override", fallback="")
-                if FPS_OVERRIDE_ENABLED and FPS_OVERRIDE_VALUE:
-                    l.warn(f"Overriding FPS of account \"{account_name}\" to {FPS_OVERRIDE_VALUE}")
-                    RAMWS.set_field(account=account_name, field="MaxFPS", value=FPS_OVERRIDE_VALUE)
+                if not override_server_url:
+                    FPS_OVERRIDE_ENABLED = str(Config.get(section=self.MULTIACCOUNT_SECTION, key="max_fps_override_enabled", fallback=0)) == "1"
+                    FPS_OVERRIDE_VALUE = Config.get(section=self.MULTIACCOUNT_SECTION, key="max_fps_override", fallback="")
+                    if FPS_OVERRIDE_ENABLED and FPS_OVERRIDE_VALUE:
+                        l.warn(f"Overriding FPS of account \"{account_name}\" to {FPS_OVERRIDE_VALUE}")
+                        RAMWS.set_field(account=account_name, field="MaxFPS", value=FPS_OVERRIDE_VALUE)
+                    else:
+                        RAMWS.set_field(account=account_name, field="MaxFPS", value="9999")
                 else:
-                    RAMWS.set_field(account=account_name, field="MaxFPS", value="9999")
+                    RAMWS.set_field(account=account_name, field="MaxFPS", value="9999") # emergency case
                 
                 # >>> Launching
+                
                 JOB_ID = account_data["server_url"]
-                SERVER_OVERRIDE_ENABLED = str(Config.get(section=self.MULTIACCOUNT_SECTION, key="server_override_enabled", fallback=0)) == "1"
-                SERVER_OVERRIDE_VALUE = Config.get(section=self.MULTIACCOUNT_SECTION, key="server_override", fallback="")
-                if SERVER_OVERRIDE_ENABLED: 
-                    l.warn(f"Overriding server of account \"{account_name}\" to {SERVER_OVERRIDE_VALUE}")
-                    JOB_ID = SERVER_OVERRIDE_VALUE
+                if override_server_url: # manual override. you REALLY want to launch a different server. ok lets ignore any configuration then
+                    l.warn(f"CRITICAL! Manual override of account \"{account_name}\"'s server to {override_server_url}")
+                    JOB_ID = override_server_url
+                else: # configuration override. user specified a server to launch
+                    SERVER_OVERRIDE_ENABLED = str(Config.get(section=self.MULTIACCOUNT_SECTION, key="server_override_enabled", fallback=0)) == "1"
+                    SERVER_OVERRIDE_VALUE = Config.get(section=self.MULTIACCOUNT_SECTION, key="server_override", fallback="")
+                    if SERVER_OVERRIDE_ENABLED: 
+                        l.warn(f"Overriding server of account \"{account_name}\" to {SERVER_OVERRIDE_VALUE}")
+                        JOB_ID = SERVER_OVERRIDE_VALUE
                 
                 RAMWS.launch_account(
                     account=account_name,
