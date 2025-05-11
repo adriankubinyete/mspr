@@ -6,6 +6,7 @@ from collections import defaultdict
 from tkinter import ttk, messagebox
 from lib.config import Config
 from lib.ramws import RAMWS
+from lib.SolsBiomeNotifier import SolsBiomeNotifier
 
 ServerCodeCache = defaultdict(dict)
 LaunchedAccountsCache = defaultdict(dict)

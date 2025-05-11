@@ -3,3 +3,4 @@ pynput
 psutil
 pyautogui
 pygetwindow
+watchdog
