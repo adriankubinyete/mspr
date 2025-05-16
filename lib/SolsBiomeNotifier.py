@@ -1,19 +1,26 @@
-from collections import defaultdict
-from lib.RoLogReader import RoLogReader
-from lib.cache import Cache
 import json
+
+from collections import defaultdict
+
+from lib.cache import Cache
+from lib.RoLogReader import RoLogReader
 
 c = Cache()
 rl = RoLogReader()
+
 
 class SolsBiomeNotifier:
     def __init__(self, autostart=True):
         self.RUNNING = False
         self._biome_callbacks = defaultdict(list)
-        
+
         self.start() if autostart else None
 
     # public
+
+    def test(self):
+        print("Is running?", self.RUNNING)
+        return None
 
     def start(self):
         if self.RUNNING:
@@ -51,25 +58,35 @@ class SolsBiomeNotifier:
             del self._biome_callbacks[username]
         rl.del_callback(username)
 
-    # private methods 
+    def is_being_monitored(self, username):
+        """
+        Check if a username is being monitored
+        :param username: str, username to check
+        :return: bool, True if the username is being monitored, False otherwise
+        """
+        return username.lower() in self._biome_callbacks
+
+    # private methods
 
     def _handle_log_line(self, username):
         def inner(line):
             if "[BloxstrapRPC]" in line:
+                print(f"[TEST] [{username}] {line}")
                 content = line.split("[BloxstrapRPC] ")[1].strip()
                 command = json.loads(content)
                 data = command.get("data", {})
                 large_image = data.get("largeImage", {})
                 biome = large_image.get("hoverText", None)
-                
+
                 previous_biome = c.get(f"biome:{username}", fallback=None)
-                
+
                 if biome != previous_biome:
                     # print(f"[TEST] [{username}] Biome changed from {previous_biome} to {biome}")
                     c.set(f"biome:{username}", biome)
                     for cb in self._biome_callbacks.get(username, []):
                         cb(current_biome=biome, previous_biome=previous_biome)
-                
+
         return inner
-    
+
+
 SolsBiomeNotifier = SolsBiomeNotifier(autostart=True)

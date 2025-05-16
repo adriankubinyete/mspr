@@ -1,8 +1,12 @@
 import tkinter as tk
+
 from tkinter import ttk
+
+from pynput import mouse
+
 from lib.config import Config
 from lib.ui.widget.Tooltip import UIToolTip
-from pynput import mouse
+
 
 class UIClickAssign(ttk.LabelFrame):
     active_overlays = {}  # Guarda overlays ativos
@@ -10,7 +14,9 @@ class UIClickAssign(ttk.LabelFrame):
     HIGHLIGHT_SQUARE_SIZE = 10
     HIGHLIGHT_SQUARE_THICKNESS = 2
 
-    def __init__(self, parent, section, key, label, info=None, padx=0, pady=0, autosave=False):
+    def __init__(
+        self, parent, section, key, label, info=None, padx=0, pady=0, autosave=False
+    ):
         """
         Cria um campo para selecionar uma posição clicando na tela.
 
@@ -37,25 +43,38 @@ class UIClickAssign(ttk.LabelFrame):
 
         # Label X e Spinbox X
         ttk.Label(row_frame, text="X:").pack(side="left")
-        self.spin_x = ttk.Spinbox(row_frame, from_=0, to=9999, width=5, command=self._on_spin_change)
+        self.spin_x = ttk.Spinbox(
+            row_frame, from_=0, to=9999, width=5, command=self._on_spin_change
+        )
         self.spin_x.pack(side="left", padx=5)
 
         # Label Y e Spinbox Y
         ttk.Label(row_frame, text="Y:").pack(side="left")
-        self.spin_y = ttk.Spinbox(row_frame, from_=0, to=9999, width=5, command=self._on_spin_change)
+        self.spin_y = ttk.Spinbox(
+            row_frame, from_=0, to=9999, width=5, command=self._on_spin_change
+        )
         self.spin_y.pack(side="left", padx=5)
 
         # Botão de Info (se fornecido)
         if info:
-            info_button = ttk.Label(row_frame, text="ℹ", foreground="blue", cursor="hand2")
+            info_button = ttk.Label(
+                row_frame, text="ℹ", foreground="blue", cursor="hand2"
+            )
             info_button.pack(side="right", padx=5)
             UIToolTip(info_button, info)  # 🔹 Adicionando tooltip
 
         # Botões Assign e Show
-        self.btn_assign = ttk.Button(row_frame, text="Assign", command=self._capture_position, takefocus=False)
+        self.btn_assign = ttk.Button(
+            row_frame, text="Assign", command=self._capture_position, takefocus=False
+        )
         self.btn_assign.pack(side="right", padx=2)
 
-        self.btn_show = ttk.Button(row_frame, text="Show", command=self._show_position_highlight, takefocus=False)
+        self.btn_show = ttk.Button(
+            row_frame,
+            text="Show",
+            command=self._show_position_highlight,
+            takefocus=False,
+        )
         self.btn_show.pack(side="right", padx=2)
 
         # Carrega valores do config.ini
@@ -65,7 +84,7 @@ class UIClickAssign(ttk.LabelFrame):
         self.spin_y.set(y)
 
     def _remove_all_highlights(self):
-        """ Remove todos os overlays e timers ativos. """
+        """Remove todos os overlays e timers ativos."""
         for key in list(self.active_overlays.keys()):
             self.active_overlays[key].destroy()
         self.active_overlays.clear()
@@ -75,7 +94,7 @@ class UIClickAssign(ttk.LabelFrame):
         self.active_timers.clear()
 
     def _remove_highlight(self):
-        """ Remove o overlay e timer do próprio elemento. """
+        """Remove o overlay e timer do próprio elemento."""
         if self.key in self.active_overlays:
             self.active_overlays[self.key].destroy()
             del self.active_overlays[self.key]
@@ -85,7 +104,7 @@ class UIClickAssign(ttk.LabelFrame):
             del self.active_timers[self.key]
 
     def _show_position_highlight(self, duration=5000):
-        """ Exibe um quadrado vermelho na posição atual por DURATION ms. """
+        """Exibe um quadrado vermelho na posição atual por DURATION ms."""
         try:
             x = int(self.spin_x.get())
             y = int(self.spin_y.get())
@@ -101,7 +120,9 @@ class UIClickAssign(ttk.LabelFrame):
         # Criando a janela do overlay
         overlay = tk.Toplevel(self.root)
         overlay.overrideredirect(True)
-        overlay.geometry(f"{size}x{size}+{x-offset}+{y-offset}")
+        overlay.geometry(
+            f"{size}x{size}+{x-offset}+{y-offset}"  # this is correct stupid linter # noqa
+        )
         overlay.attributes("-transparentcolor", "black")
         overlay.configure(bg="black")
 
@@ -111,9 +132,7 @@ class UIClickAssign(ttk.LabelFrame):
 
         # Criando o buraco interno para simular a borda
         inner_frame = tk.Frame(
-            overlay, bg="black",
-            width=size - (2 * border),
-            height=size - (2 * border)
+            overlay, bg="black", width=size - (2 * border), height=size - (2 * border)
         )
         inner_frame.place(x=border, y=border)
 
@@ -121,9 +140,8 @@ class UIClickAssign(ttk.LabelFrame):
         self.active_overlays[self.key] = overlay
         self.active_timers[self.key] = self.root.after(duration, self._remove_highlight)
 
-
     def _capture_position(self):
-        """ Captura a posição do mouse ao clicar e salva. """
+        """Captura a posição do mouse ao clicar e salva."""
         self._remove_highlight()
         self.btn_assign.config(text="Click...", state="disabled")
 
@@ -131,7 +149,7 @@ class UIClickAssign(ttk.LabelFrame):
             if pressed:
                 self.spin_x.set(x)
                 self.spin_y.set(y)
-                
+
                 if self.autosave:
                     self.save()
 
@@ -142,12 +160,12 @@ class UIClickAssign(ttk.LabelFrame):
         listener.start()
 
     def _on_spin_change(self):
-        """ Callback para quando os valores dos spinboxes mudam. """
+        """Callback para quando os valores dos spinboxes mudam."""
         if self.autosave:
             self.save()
 
     def save(self):
-        """ Salva manualmente os valores no Config. """
+        """Salva manualmente os valores no Config."""
         x = self.spin_x.get()
         y = self.spin_y.get()
         Config.set(self.section, self.key, f"{x},{y}")

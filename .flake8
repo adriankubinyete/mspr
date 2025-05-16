@@ -1,0 +1,3 @@
+[flake8]
+exclude = dev
+ignore = E501, E203, W503

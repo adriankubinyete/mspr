@@ -1,7 +1,8 @@
-import tkinter as tk
 from tkinter import ttk
-from .BaseModal import BaseModal
+
 import lib.ui.widgets as ui
+
+from .BaseModal import BaseModal
 
 
 class ModalScreenCallibration(BaseModal):

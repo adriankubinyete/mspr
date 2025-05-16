@@ -1,13 +1,13 @@
-import time
 import logging
-import pyautogui
-import pygetwindow as gw
+import time
 import tkinter as tk
+
 from tkinter import ttk
-import autoit
 
 import autoit
-import time
+import pyautogui
+import pygetwindow as gw
+
 
 def press(key: str, hold: int = 0):
     """
@@ -48,20 +48,22 @@ class TabManagerPage(ttk.Frame):
         self.root = root
         self.padx = padx
         self.pady = pady
-        
+
         self.TABMANAGER_SECTION = "CONFIG_TABMANAGER"
-        
+
         self._create_widgets()
-        
+
     def __getLogger(self, name):
         return logging.getLogger(f"mpsr.page:TabManager.{name}")
-    
+
     def _create_widgets(self):
         """Cria os widgets principais, mas não os frames de sucesso/erro."""
         frame = ttk.Frame(self, padding=(self.padx, self.pady))
         frame.pack(fill="both", expand=True)
-        
-        tk.Label(frame, text="⚠️ THIS PAGE IS IN DEVELOPMENT! ⚠️", font=("Arial", 16)).pack(pady=(10, 0))
+
+        tk.Label(
+            frame, text="⚠️ THIS PAGE IS IN DEVELOPMENT! ⚠️", font=("Arial", 16)
+        ).pack(pady=(10, 0))
 
         # Frame para os campos de entrada (Gap X, Gap Y, Delay Clicks e botões)
         input_frame = ttk.Frame(frame)
@@ -92,45 +94,60 @@ class TabManagerPage(ttk.Frame):
         self.entry_delay.pack()
 
         # Botão: Atualizar
-        update_button = ttk.Button(input_frame, text="Update Apps", command=self.update_window_list)
+        update_button = ttk.Button(
+            input_frame, text="Update Apps", command=self.update_window_list
+        )
         update_button.pack(side="left", padx=10, pady=(13, 0))  # padding top p alinhar
 
         # Botão: Organizar
-        tile_button = ttk.Button(input_frame, text="Tile my windows!", command=self.tile_windows)
+        tile_button = ttk.Button(
+            input_frame, text="Tile my windows!", command=self.tile_windows
+        )
         tile_button.pack(side="left", padx=10, pady=(13, 0))
 
         # Lista de janelas
-        self.window_listbox = tk.Listbox(frame, selectmode=tk.MULTIPLE, width=60, height=10)
+        self.window_listbox = tk.Listbox(
+            frame, selectmode=tk.MULTIPLE, width=60, height=10
+        )
         self.window_listbox.pack(pady=5)
-        
+
         debug_frame = ttk.Frame(frame)
         debug_frame.pack(fill="x")
-        
+
         self.entry_delay_start = tk.Entry(debug_frame, width=5)
         tk.Label(debug_frame, text="Delay Start:").pack(side="left", padx=5)
         self.entry_delay_start.pack(side="left", padx=5)
         self.entry_delay_start.insert(0, "0")
-        
+
         self.entry_key = tk.Entry(debug_frame, width=5)
         tk.Label(debug_frame, text="Key:").pack(side="left", padx=5)
         self.entry_key.pack(side="left")
         self.entry_key.insert(0, "space")
-        
+
         self.entry_hold = tk.Entry(debug_frame, width=5)
         tk.Label(debug_frame, text="Hold (ms):").pack(side="left", padx=5)
         self.entry_hold.pack(side="left", padx=5)
         self.entry_hold.insert(0, "250")
-        
-        
+
     # --- funcs
-    
+
     def get_window_list(self):
-        return [(window, window.title) for window in gw.getWindowsWithTitle("") if window.title.strip()]
+        return [
+            (window, window.title)
+            for window in gw.getWindowsWithTitle("")
+            if window.title.strip()
+        ]
 
     def update_window_list(self):
         self.window_listbox.delete(0, tk.END)
-        windows = [(window, window.title.strip()) for window in gw.getWindowsWithTitle("") if window.title.strip()]
-        self.windows = sorted(windows, key=lambda item: item[1].lower())  # ordena por título
+        windows = [
+            (window, window.title.strip())
+            for window in gw.getWindowsWithTitle("")
+            if window.title.strip()
+        ]
+        self.windows = sorted(
+            windows, key=lambda item: item[1].lower()
+        )  # ordena por título
 
         for _, title in self.windows:
             self.window_listbox.insert(tk.END, title)
@@ -150,12 +167,12 @@ class TabManagerPage(ttk.Frame):
             gap_x = int(self.entry_gapx.get())
             gap_y = int(self.entry_gapy.get())
             delay_between_clicks = int(self.entry_delay.get())
-            
+
             # debug, remove this
             delay_start = int(self.entry_delay_start.get())
-            hold_duration =  int(self.entry_hold.get())
+            hold_duration = int(self.entry_hold.get())
             key = self.entry_key.get()
-            
+
             print(f"delay_start: {delay_start}")
             time.sleep(delay_start)
 
@@ -166,20 +183,20 @@ class TabManagerPage(ttk.Frame):
             # for window in selected_windows:
             for i in range(len(selected_windows)):
                 window = selected_windows[i]
-                
+
                 try:
                     if window.isMaximized:
                         window.restore()  # Sai do full screen
-                    
+
                     # 🔹 Força a janela para 800x600 antes de organizar
                     window.resizeTo(800, 600)
 
                     # Move a janela para a posição calculada
                     window.moveTo(x, y)
                     window.activate()  # Traz a janela para o topo
-                    
+
                     # keep-alive
-                    press(key, hold=hold_duration) # 250ms ideal value
+                    press(key, hold=hold_duration)  # 250ms ideal value
 
                     # Atualiza X para a próxima janela
                     x += gap_x
@@ -188,17 +205,15 @@ class TabManagerPage(ttk.Frame):
                     if x > max_x:
                         x = 20
                         y += gap_y
-                        
+
                 except Exception as e:
                     print(f"Error moving window {window.title}: {e}")
 
                 # if its not the last window, wait a bit
-                print(f"Iteration {i+1} of {len(selected_windows)}")
+                print(f"Iteration {i + 1} of {len(selected_windows)}")
                 if i < len(selected_windows) - 1:
                     print("Sleeping")
                     time.sleep(delay_between_clicks / 1000)  # Delay em segundos
-
-                
 
             print("Windows tiled!")
         except Exception as e:

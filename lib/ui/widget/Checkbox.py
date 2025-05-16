@@ -1,10 +1,15 @@
 import tkinter as tk
+
 from tkinter import ttk
+
 from lib.config import Config  # Importando o singleton diretamente
 from lib.ui.widget.Tooltip import UIToolTip
 
+
 class UICheckbox(ttk.Frame):
-    def __init__(self, parent, section, key, label, info=None, padx=0, pady=0, autosave=True):
+    def __init__(
+        self, parent, section, key, label, info=None, padx=0, pady=0, autosave=True
+    ):
         """
         Cria um checkbox com opção de salvamento manual ou automático.
 
@@ -37,12 +42,16 @@ class UICheckbox(ttk.Frame):
         row_frame.pack(fill="x")
 
         # Checkbox
-        self.checkbox = ttk.Checkbutton(row_frame, variable=self.checkbox_var, takefocus=False)
+        self.checkbox = ttk.Checkbutton(
+            row_frame, variable=self.checkbox_var, takefocus=False
+        )
         self.checkbox.pack(side="left", padx=(0, 5))
 
         # Botão de Info (se fornecido)
         if info:
-            info_button = ttk.Label(row_frame, text="ℹ", foreground="blue", cursor="hand2")
+            info_button = ttk.Label(
+                row_frame, text="ℹ", foreground="blue", cursor="hand2"
+            )
             info_button.pack(side="right", padx=5)
             UIToolTip(info_button, info)
 

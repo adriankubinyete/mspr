@@ -1,16 +1,31 @@
 import tkinter as tk
+
 from tkinter import ttk
+
 from lib.config import Config  # Importando o singleton diretamente
 from lib.ui.widget.Tooltip import UIToolTip
 
+
 class UIToggleableEntry(ttk.Frame):
-    def __init__(self, parent, section, key, label, info=None, padx=0, pady=0, width=35, fallback="", autosave=True):
+    def __init__(
+        self,
+        parent,
+        section,
+        key,
+        label,
+        info=None,
+        padx=0,
+        pady=0,
+        width=35,
+        fallback="",
+        autosave=True,
+    ):
         super().__init__(parent)
         self.section = section
         self.key = key
-        
+
         self.autosave = autosave
-        self._debounce_job = None 
+        self._debounce_job = None
         self.DEBOUNCE = 300  # ms : debounce for save job
 
         self.pack(fill="x", pady=pady, padx=padx, anchor="w")
@@ -23,11 +38,18 @@ class UIToggleableEntry(ttk.Frame):
 
         self.toggle_var = tk.BooleanVar(value=initial_enabled)
 
-        self.toggle_button = ttk.Checkbutton(row_frame, variable=self.toggle_var, takefocus=False, command=self._on_toggle)
+        self.toggle_button = ttk.Checkbutton(
+            row_frame,
+            variable=self.toggle_var,
+            takefocus=False,
+            command=self._on_toggle,
+        )
         self.toggle_button.pack(side="left", padx=(0, 5))
 
         if info:
-            info_button = ttk.Label(row_frame, text="ℹ", foreground="blue", cursor="hand2")
+            info_button = ttk.Label(
+                row_frame, text="ℹ", foreground="blue", cursor="hand2"
+            )
             info_button.pack(side="right", padx=5)
             UIToolTip(info_button, info)
 

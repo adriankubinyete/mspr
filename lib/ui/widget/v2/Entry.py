@@ -1,9 +1,25 @@
 import tkinter as tk
+
 from tkinter import ttk
+
 from lib.config import Config  # Importando o singleton diretamente
 
+
 class UIEntry(ttk.Frame):
-    def __init__(self, parent, section, key, label=None, info=None, padx=0, pady=0, width=35, fallback="", show_label=True, show_info=True):
+    def __init__(
+        self,
+        parent,
+        section,
+        key,
+        label=None,
+        info=None,
+        padx=0,
+        pady=0,
+        width=35,
+        fallback="",
+        show_label=True,
+        show_info=True,
+    ):
         """
         Construtor para o widget de entrada.
 
@@ -40,17 +56,25 @@ class UIEntry(ttk.Frame):
         row_frame.grid(row=0, column=0, sticky="w")  # Usando grid ao invés de pack
 
         if self.show_info and info:
-            info_button = ttk.Label(row_frame, text="ℹ", foreground="blue", cursor="hand2")
-            info_button.grid(row=0, column=2, padx=(0, 5))  # Organizando o info_button no grid
+            info_button = ttk.Label(
+                row_frame, text="ℹ", foreground="blue", cursor="hand2"
+            )
+            info_button.grid(
+                row=0, column=2, padx=(0, 5)
+            )  # Organizando o info_button no grid
 
         if self.show_label and label:
-            ttk.Label(row_frame, text=label).grid(row=0, column=0, padx=(0, 5))  # Organizando o label no grid
+            ttk.Label(row_frame, text=label).grid(
+                row=0, column=0, padx=(0, 5)
+            )  # Organizando o label no grid
 
         # Adiciona o Entry ao frame
         self.entry = ttk.Entry(row_frame, width=width, textvariable=self.entry_var)
         self.entry.grid(row=0, column=1, padx=(0, 5))  # Organizando o entry no grid
 
-        row_frame.columnconfigure(1, weight=1)  # Permitindo que a coluna do entry expanda
+        row_frame.columnconfigure(
+            1, weight=1
+        )  # Permitindo que a coluna do entry expanda
 
         # Adiciona um trace para salvar automaticamente ao alterar o valor
         self.entry_var.trace_add("write", self.on_entry_change)

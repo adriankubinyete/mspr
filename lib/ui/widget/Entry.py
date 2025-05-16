@@ -1,10 +1,25 @@
 import tkinter as tk
+
 from tkinter import ttk
+
 from lib.config import Config  # Importando o singleton diretamente
 from lib.ui.widget.Tooltip import UIToolTip
 
+
 class UIEntry(ttk.Frame):
-    def __init__(self, parent, section, key, label, info=None, padx=0, pady=0, width=35, fallback="", autosave=True):
+    def __init__(
+        self,
+        parent,
+        section,
+        key,
+        label,
+        info=None,
+        padx=0,
+        pady=0,
+        width=35,
+        fallback="",
+        autosave=True,
+    ):
         super().__init__(parent)
         self.key = key
         self.section = section
@@ -16,7 +31,9 @@ class UIEntry(ttk.Frame):
         row_frame.pack(fill="x")
 
         if info:
-            info_button = ttk.Label(row_frame, text="ℹ", foreground="blue", cursor="hand2")
+            info_button = ttk.Label(
+                row_frame, text="ℹ", foreground="blue", cursor="hand2"
+            )
             info_button.pack(side="right", padx=5)
             UIToolTip(info_button, info)
 

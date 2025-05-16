@@ -1,8 +1,10 @@
-import tkinter as tk
 from tkinter import ttk
-from .BaseModal import BaseModal
-from lib.config import Config
+
 import lib.ui.widgets as ui
+
+from lib.config import Config
+
+from .BaseModal import BaseModal
 
 
 class ModalBiomeManager(BaseModal):
@@ -38,14 +40,14 @@ class ModalBiomeConfig(BaseModal):
             resizeable=False,
             section_name=biome,
         )
-        l = self._getLogger("__init__")
+        logger = self._getLogger("__init__")
         self.SAVE_BUTTON = False
         self.biome = biome
         # Call "<CLASS>.open" to run the Modal in a button. It will build the widgets defined in "<CLASS>._widgets"
 
         RARE_BIOMES = ["GLITCHED", "DREAM SPACE"]
         if biome not in Config.get_sections() or len(Config.get(biome)) == 0:
-            l.info(f"Biome [{biome}] not found in config, pre-generating...")
+            logger.info(f"Biome [{biome}] not found in config, pre-generating...")
             Config.set(biome, "send_message", "1")
             Config.set(biome, "send_ping", "1" if biome in RARE_BIOMES else "0")
             Config.set(

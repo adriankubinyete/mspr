@@ -1,10 +1,25 @@
 import tkinter as tk
+
 from tkinter import ttk
+
 from lib.config import Config  # Importando o singleton diretamente
 from lib.ui.widget.Tooltip import UIToolTip
 
+
 class UIRadio(ttk.Frame):
-    def __init__(self, parent, section, key, label, options, info=None, padx=0, pady=0, max_columns=3, autosave=True):
+    def __init__(
+        self,
+        parent,
+        section,
+        key,
+        label,
+        options,
+        info=None,
+        padx=0,
+        pady=0,
+        max_columns=3,
+        autosave=True,
+    ):
         """
         Cria um grupo de botões de rádio, ajustando para múltiplas linhas conforme necessário.
 
@@ -50,14 +65,20 @@ class UIRadio(ttk.Frame):
         for index, (value, text) in enumerate(options):
             row = index // max_columns
             col = index % max_columns
-            ttk.Radiobutton(radio_frame, text=text, variable=self.radio_var, value=value, takefocus=False).grid(
-                row=row, column=col, padx=10, pady=5
-            )
+            ttk.Radiobutton(
+                radio_frame,
+                text=text,
+                variable=self.radio_var,
+                value=value,
+                takefocus=False,
+            ).grid(row=row, column=col, padx=10, pady=5)
 
         # Botão de Info POSICIONADO ABSOLUTAMENTE
         if info:
             info_button = ttk.Label(frame, text="ℹ", foreground="blue", cursor="hand2")
-            info_button.place(relx=1.0, rely=1.0, anchor="se", x=-10, y=-8)  # Posição absoluta no canto inferior direito
+            info_button.place(
+                relx=1.0, rely=1.0, anchor="se", x=-10, y=-8
+            )  # Posição absoluta no canto inferior direito
             UIToolTip(info_button, info)
 
     def on_radio_change(self, *args):

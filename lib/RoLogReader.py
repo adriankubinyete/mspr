@@ -1,13 +1,17 @@
-import threading
-import time
-from collections import defaultdict
-from pathlib import Path
-from lib.cache import Cache
-import requests
 import logging
 import re
+import threading
+import time
+
+from collections import defaultdict
+from pathlib import Path
+
+import requests
+
+from lib.cache import Cache
 
 c = Cache()
+
 
 class FileWatcher(threading.Thread):
     def __init__(self, file_path, callback):
@@ -52,14 +56,17 @@ class FileWatcher(threading.Thread):
             time.sleep(0.1)
 
 
-
 class RoLogReader:
     def __init__(self):
         self.LOG_NAME = "mpsr.RoLogReader"
         self._accounts = defaultdict(list)
         self.RUNNING = False
-        self.LOG_DIRECTORY = Path.home() / "AppData" / "Local" / "Roblox" / "Logs" # where is roblox logs located
-        self.USERID_PATTERN = re.compile(r"FLog::GameJoinLoadTime.*userid:(\d+),") # pattern to identify user id
+        self.LOG_DIRECTORY = (
+            Path.home() / "AppData" / "Local" / "Roblox" / "Logs"
+        )  # where is roblox logs located
+        self.USERID_PATTERN = re.compile(
+            r"FLog::GameJoinLoadTime.*userid:(\d+),"
+        )  # pattern to identify user id
         self._watching = {}  # file path -> FileWatcher
 
     # public methods
@@ -75,25 +82,25 @@ class RoLogReader:
         for watcher in self._watching.values():
             watcher.stop()
         self._watching.clear()
-        
+
     def set_callback(self, username, callback):
         self._accounts[username.lower()].append(callback)
-    
+
     def del_callback(self, username):
         if username.lower() in self._accounts:
             del self._accounts[username.lower()]
 
     # private methods (should not be called directly; internal components)
-    
+
     def __getLogger(self, name):
         return logging.getLogger(f"{self.LOG_NAME}.{name}")
 
     def _watch_loop(self):
         logger = self.__getLogger("_watch_loop")
         logger.debug("Starting log watcher loop.")
-        FLAG_ALREADY_REPORTED = False # to send "No accounts to monitor" only once
+        FLAG_ALREADY_REPORTED = False  # to send "No accounts to monitor" only once
         while self.RUNNING:
-            
+
             # checking if there are callbacks registered, else, its useless to keep running
             if not self._accounts:
                 if not FLAG_ALREADY_REPORTED:
@@ -102,82 +109,96 @@ class RoLogReader:
                 time.sleep(5)
                 continue
             FLAG_ALREADY_REPORTED = False
-            
+
             for file in self._get_log_files():
-                if file not in self._watching and file not in c.get("deadlogs", fallback=[]):
-                    logger.debug(f"Starting monitor {file.name} : {self._identify_username_from_log_file(file)}")
-                    c.set("usernameFromLog:"+file.name, self._identify_username_from_log_file(file))
-                    
+                if file not in self._watching and file not in c.get(
+                    "deadlogs", fallback=[]
+                ):
+                    logger.debug(
+                        f"Starting monitor {file.name} : {self._identify_username_from_log_file(file)}"
+                    )
+                    c.set(
+                        "usernameFromLog:" + file.name,
+                        self._identify_username_from_log_file(file),
+                    )
+
                     watcher = FileWatcher(file, self._dispatch_line)
                     self._watching[file] = watcher
                     watcher.start()
                 else:
                     # already being monitored
                     pass
-                
+
             time.sleep(5)  # checa por novos arquivos a cada 5s
 
     def _dispatch_line(self, logfile_path, line):
         logger = self.__getLogger("_dispatch_line")
-        
+
         logfile_name = logfile_path.name
         # Aqui você trata a linha nova, incluindo o nome do arquivo
         # ignore lines that contain FLog::WndProcessCheck
         IGNORE_LINES = ["FLog::WndProcessCheck"]
         if any(ignore in line for ignore in IGNORE_LINES):
             return
-        
+
         username = c.get(f"usernameFromLog:{logfile_name}", fallback=None)
         if username is None:
             logger.warning(f"No username found for {logfile_name}")
-            
+
             # stop the file watcher
             watcher = self._watching.pop(logfile_path)
             watcher.stop()
-            
+
             # mark as a dead file (so we dont watch it again)
             deadlogs = c.get("deadlogs", fallback=[])
             deadlogs.append(logfile_path)
             c.set("deadlogs", deadlogs)
-            
+
             return
-        
+
         # check if theres a callback for that username: if theres a callback, call it
         if username in self._accounts:
             # self.__getLogger(f"_dispatch_line.live.{username}").info(f"{line}")
             for callback in self._accounts[username]:
                 callback(line)
             return
-        
+
         # self.__getLogger(f"_dispatch_line.dead.{username}").debug(f"{line}")
-        
 
     def _get_log_files(self):
         return [
-            file for file in self.LOG_DIRECTORY.glob("*.log")
+            file
+            for file in self.LOG_DIRECTORY.glob("*.log")
             if "Player" in file.name and file.name.endswith("_last.log")
         ]
 
     def _identify_username_from_log_file(self, file_name):
         logger = self.__getLogger("_identify_username_from_log_file")
-        
+        logger.trace("Called")
+
         userid = self._identify_userid_from_log_file(file_name)
         if userid is None:
             return None
 
         return self._get_username_from_userid(userid)
-            
 
     def _identify_userid_from_log_file(self, file_name):
         logger = self.__getLogger("_identify_userid_from_log_file")
+        cached = c.get(f"useridFromLog:{file_name}", fallback=None)
+        if cached:
+            logger.trace(f"cache hit: {file_name} (data: {cached})")
+            return cached
+        logger.trace(f"cache miss: {file_name}")
+
         with open(file_name, "r", encoding="utf-8", errors="ignore") as f:
             for line in f:
                 match = self.USERID_PATTERN.search(line)
                 if match:
+                    c.set(f"useridFromLog:{file_name}", match.group(1))
                     return match.group(1)
         logger.warning(f"Failed to identify userid from {file_name}")
         return None
-    
+
     def _get_username_from_userid(self, userid):
         """
         Receives an userid and returns the username, requesting through Roblox's API.
@@ -187,7 +208,7 @@ class RoLogReader:
         logger = self.__getLogger("_get_username_from_userid")
 
         # Verifica no cache com TTL
-        cached = c.get("usernameFromUserid:"+userid)
+        cached = c.get("usernameFromUserid:" + userid)
         if cached is not None:
             return cached
 
@@ -199,15 +220,16 @@ class RoLogReader:
                 data = response.json()
                 username = data.get("name")
                 if username:
-                    c.set("useridFromUsername:"+username, userid)
-                    c.set("usernameFromUserid:"+userid, username)
+                    c.set("useridFromUsername:" + username, userid)
+                    c.set("usernameFromUserid:" + userid, username)
                     return username
                 else:
                     logger.warning(f"Response without name for userid {userid}: {data}")
             else:
-                logger.warning(f"Failed to find username of userid {userid}: {response.status_code}")
+                logger.warning(
+                    f"Failed to find username of userid {userid}: {response.status_code}"
+                )
         except Exception as e:
             logger.error(f"Error trying to search username of userid {userid}: {e}")
 
         return None
-

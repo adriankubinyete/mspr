@@ -1,5 +1,7 @@
 import tkinter as tk
+
 from tkinter import ttk
+
 
 class UIToolTip:
     def __init__(self, widget, text):
@@ -17,14 +19,14 @@ class UIToolTip:
         self.tooltip.withdraw()  # Esconde inicialmente
         self.tooltip.overrideredirect(True)  # Remove bordas da janela
         self.tooltip.geometry("+0+0")
-        
+
         label = ttk.Label(
-            self.tooltip, 
-            text=text, 
-            relief="solid", 
-            borderwidth=1, 
-            font=("Arial", 9), 
-            # anchor="center", 
+            self.tooltip,
+            text=text,
+            relief="solid",
+            borderwidth=1,
+            font=("Arial", 9),
+            # anchor="center",
             # justify="center"
         )
         label.pack(ipadx=5, ipady=2)

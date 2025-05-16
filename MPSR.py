@@ -1,12 +1,15 @@
 import logging
-import tkinter as tk
 import threading
-from tkinter import ttk
+import tkinter as tk
+
 from collections import defaultdict
+from tkinter import ttk
 
 # interface
 import lib.ui.widgets as ui
-from lib.ui.utils import *
+
+from lib.ui.utils import style_break_tab_focus
+
 
 class Application:
     def __init__(
@@ -51,8 +54,8 @@ class Application:
         """
         Initializes the main notebook
         """
-        l = self.__getLogger("setup:create_notebok")
-        l.info("Called")
+        logger = self.__getLogger("setup:create_notebok")
+        logger.info("Called")
 
         self.notebook = ttk.Notebook(self.root)
         self.notebook.pack(fill="both", expand=True)
@@ -65,8 +68,8 @@ class Application:
         """
         Dinamically adds pages to the notebook
         """
-        l = self.__getLogger("setup:create_notebook_pages")
-        l.info("Called")
+        logger = self.__getLogger("setup:create_notebook_pages")
+        logger.info("Called")
 
         pages = {
             # page_name: callback_function --> will be called with frame as argument
@@ -85,13 +88,13 @@ class Application:
             callback(frame)
 
     def page_main(self, page):
-        l = self.__getLogger("page:main")
-        l.info("Called")
+        logger = self.__getLogger("page:main")
+        logger.info("Called")
 
         frame = ttk.Frame(page, padding=10)
         frame.pack(fill="both", expand=True)
 
-        l.trace("ModalBiomeManager...")
+        logger.trace("ModalBiomeManager...")
         self.biome_manager = ui.ModalBiomeManager(self.root, self.BIOMES)
         self.btn_biome_settings = ttk.Button(
             frame,
@@ -100,7 +103,7 @@ class Application:
             takefocus=False,
         )
 
-        l.trace("ModalScreenCallibration...")
+        logger.trace("ModalScreenCallibration...")
         self.callibration_modal = ui.ModalScreenCallibration(self.root)
         self.btn_screen_settings = ttk.Button(
             frame,
@@ -108,41 +111,40 @@ class Application:
             command=self.callibration_modal.open,
             takefocus=False,
         )
-        
+
         # ----------------
         self.btn_biome_settings.pack(side="top", fill="x")
         self.btn_screen_settings.pack(side="top", fill="x")
         # ram settings
-        
 
     def page_single_account(self, page):
-        l = self.__getLogger("page:single_account")
-        l.info("Called")
+        logger = self.__getLogger("page:single_account")
+        logger.info("Called")
         # private server
         # discord webhook
         # start/stop
 
     def page_multi_account(self, page):
-        l = self.__getLogger("page:multi_account")
-        l.info("Called")
-        l.trace(f"Instantiating MultiAccountPage")
+        logger = self.__getLogger("page:multi_account")
+        logger.info("Called")
+        logger.trace("Instantiating MultiAccountPage")
         multi_account_page = ui.MultiAccountPage(page, self)
         multi_account_page.pack(fill="both", expand=True)
-        l.trace(f"Starting RAMWS connection check")
+        logger.trace("Starting RAMWS connection check")
         threading.Thread(
             target=multi_account_page.start_connection, daemon=True
         ).start()
 
     def page_tab_manager(self, page):
-        l = self.__getLogger("page:tab_manager")
-        l.info("Called")
-        
+        logger = self.__getLogger("page:tab_manager")
+        logger.info("Called")
+
         tab_manager_page = ui.TabManagerPage(page)
         tab_manager_page.pack(fill="both", expand=True)
-        
+
     def page_development(self, page):
-        l = self.__getLogger("page:development")
-        l.info("Called")
-        
+        logger = self.__getLogger("page:development")
+        logger.info("Called")
+
         development_page = ui.DevelopmentPage(page)
         development_page.pack(fill="both", expand=True)

@@ -1,7 +1,10 @@
 import tkinter as tk
+
 from tkinter import ttk
+
 from lib.config import Config
 from lib.ui.widget.Tooltip import UIToolTip
+
 
 class UIBoxAssign(ttk.LabelFrame):
     def __init__(self, parent, section, key, label, info=None, padx=0, pady=0):
@@ -33,13 +36,19 @@ class UIBoxAssign(ttk.LabelFrame):
 
         # Botão de Info (se fornecido)
         if info:
-            info_button = ttk.Label(row_frame, text="ℹ", foreground="blue", cursor="hand2")
+            info_button = ttk.Label(
+                row_frame, text="ℹ", foreground="blue", cursor="hand2"
+            )
             info_button.pack(side="right", padx=5)
             UIToolTip(info_button, info)  # 🔹 Adicionando tooltip
-       
+
         # Botões de ação
-        ttk.Button(row_frame, text="Assign", command=self.assign_box, takefocus=False).pack(side="right", padx=2)
-        ttk.Button(row_frame, text="Show", command=self.show_box, takefocus=False).pack(side="right", padx=2)
+        ttk.Button(
+            row_frame, text="Assign", command=self.assign_box, takefocus=False
+        ).pack(side="right", padx=2)
+        ttk.Button(row_frame, text="Show", command=self.show_box, takefocus=False).pack(
+            side="right", padx=2
+        )
 
     def create_spinbox(self, parent, text, var):
         """Cria um Spinbox com um label à esquerda."""
@@ -50,7 +59,7 @@ class UIBoxAssign(ttk.LabelFrame):
     def assign_box(self):
         """Cria uma overlay fullscreen para capturar a seleção da bounding box."""
         parent_window = self.winfo_toplevel()
-        
+
         overlay = tk.Toplevel()
         overlay.attributes("-fullscreen", True)
         overlay.attributes("-alpha", 0.3)
@@ -67,7 +76,9 @@ class UIBoxAssign(ttk.LabelFrame):
         def on_press(event):
             nonlocal start_x, start_y, rect_id
             start_x, start_y = event.x, event.y
-            rect_id = canvas.create_rectangle(start_x, start_y, start_x, start_y, outline="red", width=2)
+            rect_id = canvas.create_rectangle(
+                start_x, start_y, start_x, start_y, outline="red", width=2
+            )
 
         def on_drag(event):
             canvas.coords(rect_id, start_x, start_y, event.x, event.y)
@@ -106,7 +117,9 @@ class UIBoxAssign(ttk.LabelFrame):
         overlay.attributes("-topmost", True)
         overlay.attributes("-alpha", 0.3)
         overlay.overrideredirect(True)
-        overlay.geometry(f"{self.w_var.get()}x{self.h_var.get()}+{self.x_var.get()}+{self.y_var.get()}")
+        overlay.geometry(
+            f"{self.w_var.get()}x{self.h_var.get()}+{self.x_var.get()}+{self.y_var.get()}"
+        )
         overlay.config(bg="red")
 
         overlay.after(1000, overlay.destroy)
